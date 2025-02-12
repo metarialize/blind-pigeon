@@ -520,8 +520,64 @@ export function StepProcessor() {
                         <ChevronDown className="h-4 w-4" />
                       </Button>
                     </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <div className="p-4 space-y-6">
+                    <CollapsibleContent className="p-4">
+                      <div className="space-y-4">
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              className="w-full border-dashed"
+                            >
+                              <Plus className="h-4 w-4 mr-2" />
+                              Add Custom Redaction
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Add Custom Redaction</DialogTitle>
+                              <DialogDescription>
+                                Enter the text you want to redact and select its category.
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <div className="space-y-2">
+                                <Label>Text to Redact</Label>
+                                <Input
+                                  value={manualValue}
+                                  onChange={(e) => setManualValue(e.target.value)}
+                                  placeholder="Enter text to redact..."
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Category</Label>
+                                <Select
+                                  value={manualType}
+                                  onValueChange={(value) => setManualType(value as SensitiveDataType)}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {Object.keys(categoryColors).map((type) => (
+                                      <SelectItem key={type} value={type}>
+                                        <span className="flex items-center gap-2">
+                                          <span>{categoryColors[type as SensitiveDataType].icon}</span>
+                                          <span className="capitalize">{type}</span>
+                                        </span>
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                            <DialogFooter>
+                              <Button onClick={handleAddManualEntity}>
+                                Add Entry
+                              </Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
+
                         {Object.entries(
                           entities.reduce((acc, entity) => {
                             if (!acc[entity.type]) {
