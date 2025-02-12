@@ -10,8 +10,10 @@ const Index = () => {
             Blind Pigeon
           </h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Securely process sensitive text with automated masking and restoration.
-            All processing happens offline, ensuring your data stays private.
+            Securely Redact and Restore Sensitive Information—Offline.
+          </p>
+          <p className="text-sm text-gray-500 mt-2 max-w-2xl mx-auto">
+            Protect your data with automated redaction and seamless restoration—all processed locally for maximum privacy.
           </p>
         </div>
         

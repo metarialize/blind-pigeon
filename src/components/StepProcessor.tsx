@@ -74,20 +74,20 @@ type Step = {
 
 const steps: Step[] = [
   {
-    title: "Process Text",
-    description: "Process your text with advanced pattern recognition.",
+    title: "Redact Text",
+    description: "Automatically detect and redact sensitive information in one click.",
   },
   {
     title: "Review & Customize",
-    description: "Review detected items and customize redaction.",
+    description: "Effortlessly identify and redact names, addresses, dates, and other sensitive details while maintaining context.",
   },
   {
     title: "Copy & Export",
-    description: "Copy the redacted text for external processing.",
+    description: "Securely copy your redacted text for external use.",
   },
   {
-    title: "Process & Restore",
-    description: "Paste processed text to restore original data.",
+    title: "Restore Text",
+    description: "Safely restore your original text when needed.",
   },
 ];
 
@@ -497,7 +497,7 @@ export function StepProcessor() {
             <Textarea
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder="Paste your text here for advanced pattern recognition..."
+              placeholder="Paste your text here to detect and redact sensitive information..."
               className="min-h-[200px] font-mono text-sm transition-all duration-200"
             />
             <div className="flex justify-between items-center">
@@ -506,8 +506,8 @@ export function StepProcessor() {
                 Reset
               </Button>
               <Button onClick={handleDetectAndMask}>
-                <Eye className="mr-2 h-4 w-4" />
-                Analyze
+                <Shield className="mr-2 h-4 w-4" />
+                Redact
               </Button>
             </div>
           </div>
@@ -515,13 +515,6 @@ export function StepProcessor() {
       case 1:
         return (
           <div className="space-y-4">
-            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg mb-4">
-              <p className="text-sm text-yellow-800 flex items-center">
-                <span className="mr-2">⚠️</span>
-                Keep placeholders unchanged when processing externally to ensure data recovery.
-              </p>
-            </div>
-            
             <div className="max-h-[200px] overflow-y-auto p-4 border rounded-lg bg-white font-mono text-sm whitespace-pre-wrap transition-all duration-300">
               {showOriginal ? (
                 <div className="animate-fade-in">
@@ -547,7 +540,58 @@ export function StepProcessor() {
                 </Button>
               </CollapsibleTrigger>
               <CollapsibleContent>
-                <div className="p-4 pt-0">
+                <div className="p-4 pt-0 space-y-4">
+                  <div className="flex justify-end">
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" size="sm">
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Item to Redact
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Add Additional Item to Redact</DialogTitle>
+                          <DialogDescription>
+                            Manually add sensitive information you'd like to redact.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                          <div className="grid gap-2">
+                            <Label htmlFor="value">Text to Redact</Label>
+                            <Input
+                              id="value"
+                              value={manualValue}
+                              onChange={(e) => setManualValue(e.target.value)}
+                              placeholder="Enter sensitive text to redact..."
+                            />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label htmlFor="type">Category</Label>
+                            <Select
+                              value={manualType}
+                              onValueChange={(value: any) => setManualType(value)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select category" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Object.keys(categoryColors).map((type) => (
+                                  <SelectItem key={type} value={type}>
+                                    {type.charAt(0).toUpperCase() + type.slice(1)}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button onClick={handleAddManualEntity}>Add Item</Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+
                   {entities.length > 0 ? (
                     <div className="space-y-2">
                       {getSummaryByCategory(entities).map(({ type, count, icon, text }) => {
@@ -591,67 +635,25 @@ export function StepProcessor() {
                       })}
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground">No sensitive data detected</p>
+                    <p className="text-sm text-muted-foreground">No sensitive information detected</p>
                   )}
                 </div>
               </CollapsibleContent>
             </Collapsible>
+
             <div className="flex justify-between items-center">
               <Button variant="outline" onClick={() => setCurrentStep(0)}>
                 <ChevronLeft className="mr-2 h-4 w-4" />
                 Back
               </Button>
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Item to Redact
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Add Item to Redact</DialogTitle>
-                    <DialogDescription>
-                      Enter a value to redact from the text.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="value">Value to Redact</Label>
-                      <Input
-                        id="value"
-                        value={manualValue}
-                        onChange={(e) => setManualValue(e.target.value)}
-                        placeholder="Enter text to redact..."
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="type">Type</Label>
-                      <Select
-                        value={manualType}
-                        onValueChange={(value: any) => setManualType(value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Object.keys(categoryColors).map((type) => (
-                            <SelectItem key={type} value={type}>
-                              {type.charAt(0).toUpperCase() + type.slice(1)}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button onClick={handleAddManualEntity}>Add Item</Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+              <Button 
+                onClick={handleCopy}
+                disabled={!maskedText}
+                className="w-full sm:w-auto ml-2"
+              >
+                <Copy className="mr-2 h-4 w-4" />
+                Copy Redacted Text
+              </Button>
             </div>
           </div>
         );
