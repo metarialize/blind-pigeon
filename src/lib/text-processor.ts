@@ -16,8 +16,8 @@ export const detectSensitiveData = (text: string): DetectedEntity[] => {
   let index = 0;
   const seenValues = new Map<string, string>(); // Track repeated values
 
-  // Name detection (basic patterns)
-  const nameRegex = /\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+\b/g;
+  // Enhanced name detection (including titles and initials)
+  const nameRegex = /\b(?:Mr\.|Mrs\.|Ms\.|Dr\.|Prof\.)?\s*[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b|\b[A-Z]\.\s+[A-Z][a-z]+\b/g;
   let match;
   while ((match = nameRegex.exec(text)) !== null) {
     const value = match[0];
@@ -33,6 +33,29 @@ export const detectSensitiveData = (text: string): DetectedEntity[] => {
       seenValues.set(value, placeholder);
       entities.push({
         type: 'name',
+        value,
+        placeholder,
+        index: match.index,
+      });
+    }
+  }
+
+  // Employee ID detection (various formats)
+  const employeeIdRegex = /\b(?:EMP|ID|E)[-.]?\d{4,8}\b|\b\d{4,8}[-.]?(?:EMP|ID|E)\b/gi;
+  while ((match = employeeIdRegex.exec(text)) !== null) {
+    const value = match[0];
+    if (seenValues.has(value)) {
+      entities.push({
+        type: 'account',
+        value,
+        placeholder: seenValues.get(value)!,
+        index: match.index,
+      });
+    } else {
+      const placeholder = generatePlaceholder('account', index++);
+      seenValues.set(value, placeholder);
+      entities.push({
+        type: 'account',
         value,
         placeholder,
         index: match.index,
@@ -186,6 +209,9 @@ export const detectSensitiveData = (text: string): DetectedEntity[] => {
 };
 
 export const maskText = (text: string, entities: DetectedEntity[]): string => {
+  // Add instructions at the beginning of the masked text
+  const instructions = `[IMPORTANT: Please maintain all placeholder tags (format: <<UID:TYPE:XXXXXX>>) exactly as they appear. These are essential for restoring the original sensitive information. Do not modify, remove, or change the format of any placeholder.]\n\n`;
+  
   let maskedText = text;
   // Sort entities by index in descending order to replace from end to start
   const sortedEntities = [...entities].sort((a, b) => b.index - a.index);
@@ -197,7 +223,7 @@ export const maskText = (text: string, entities: DetectedEntity[]): string => {
       maskedText.substring(entity.index + entity.value.length);
   }
   
-  return maskedText;
+  return instructions + maskedText;
 };
 
 export const restoreText = (
