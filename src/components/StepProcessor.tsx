@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -28,6 +29,7 @@ import {
   restoreText,
   validatePlaceholders,
   validatePlaceholdersDetailed,
+  generatePlaceholder,
   type DetectedEntity,
   type SensitiveDataType,
   type ValidationResult,
