@@ -78,12 +78,12 @@ const steps: Step[] = [
     description: "Process your text with advanced pattern recognition.",
   },
   {
-    title: "Review Detection",
-    description: "Review automatically detected data.",
+    title: "Review & Customize",
+    description: "Review detected items and customize redaction.",
   },
   {
-    title: "Mask & Export",
-    description: "Copy the masked text for external processing.",
+    title: "Copy & Export",
+    description: "Copy the redacted text for external processing.",
   },
   {
     title: "Process & Restore",
@@ -329,8 +329,8 @@ export function StepProcessor() {
     try {
       await navigator.clipboard.writeText(maskedText);
       toast({
-        title: "✅ Copied successfully",
-        description: "The masked text is ready for external processing.",
+        title: "✅ Text copied successfully!",
+        description: "You can now proceed to the next step.",
       });
       setCurrentStep(3);
     } catch (err) {
@@ -444,7 +444,7 @@ export function StepProcessor() {
     if (!manualValue.trim()) {
       toast({
         title: "No value provided",
-        description: "Please enter a value to mask.",
+        description: "Please enter a value to redact.",
         variant: "destructive",
       });
       return;
@@ -470,11 +470,10 @@ export function StepProcessor() {
     const newMaskedText = maskText(inputText, [...entities, newEntity]);
     setMaskedText(newMaskedText);
     setManualValue("");
-    setDialogOpen(false);
-
+    
     toast({
       title: "Item added",
-      description: `Added new ${manualType} to masked items.`,
+      description: `Added new ${manualType} to redacted items.`,
     });
   };
 
@@ -486,7 +485,7 @@ export function StepProcessor() {
 
     toast({
       title: "Item removed",
-      description: `Removed ${type} from masked items.`,
+      description: `Removed ${type} from redacted items.`,
     });
   };
 
@@ -542,7 +541,7 @@ export function StepProcessor() {
                   className="w-full flex justify-between items-center p-4 hover:bg-muted/80"
                 >
                   <span className="font-medium">
-                    Detected & Masked Items ({entities.length})
+                    Detected & Redacted Items ({entities.length})
                   </span>
                   <ChevronDown className="h-4 w-4" />
                 </Button>
@@ -554,7 +553,6 @@ export function StepProcessor() {
                       {getSummaryByCategory(entities).map(({ type, count, icon, text }) => {
                         const categoryEntities = entities.filter(e => e.type === type);
                         const isExpanded = expandedCategories[type] ?? false;
-                        const hasWrappedItems = categoryEntities.length > 3;
                         
                         return (
                           <Collapsible 
@@ -570,11 +568,6 @@ export function StepProcessor() {
                                 <div className="flex items-center gap-2">
                                   <span>{icon}</span>
                                   <span>{type} ({count})</span>
-                                  {hasWrappedItems && !isExpanded && (
-                                    <span className="text-xs text-muted-foreground">
-                                      +{categoryEntities.length - 3} more
-                                    </span>
-                                  )}
                                 </div>
                                 <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? "transform rotate-180" : ""}`} />
                               </Button>
@@ -608,14 +601,57 @@ export function StepProcessor() {
                 <ChevronLeft className="mr-2 h-4 w-4" />
                 Back
               </Button>
-              <Button 
-                onClick={handleCopy}
-                disabled={!maskedText}
-                className="w-full sm:w-auto ml-2"
-              >
-                <Copy className="mr-2 h-4 w-4" />
-                Copy Masked Text
-              </Button>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Item to Redact
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Add Item to Redact</DialogTitle>
+                    <DialogDescription>
+                      Enter a value to redact from the text.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="value">Value to Redact</Label>
+                      <Input
+                        id="value"
+                        value={manualValue}
+                        onChange={(e) => setManualValue(e.target.value)}
+                        placeholder="Enter text to redact..."
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="type">Type</Label>
+                      <Select
+                        value={manualType}
+                        onValueChange={(value: any) => setManualType(value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.keys(categoryColors).map((type) => (
+                            <SelectItem key={type} value={type}>
+                              {type.charAt(0).toUpperCase() + type.slice(1)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button onClick={handleAddManualEntity}>Add Item</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
         );
