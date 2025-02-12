@@ -71,13 +71,14 @@ const steps: Step[] = [
   },
 ];
 
-const categoryColors: Record<string, { bg: string; text: string; icon: string }> = {
+const categoryColors: Record<SensitiveDataType, { bg: string; text: string; icon: string }> = {
   name: { bg: "bg-purple-100", text: "text-purple-700", icon: "🔵" },
   email: { bg: "bg-orange-100", text: "text-orange-700", icon: "🟠" },
   phone: { bg: "bg-blue-100", text: "text-blue-700", icon: "🟢" },
   address: { bg: "bg-yellow-100", text: "text-yellow-700", icon: "🟡" },
   dob: { bg: "bg-red-100", text: "text-red-700", icon: "🔴" },
   ssn: { bg: "bg-gray-100", text: "text-gray-700", icon: "⚪" },
+  account: { bg: "bg-green-100", text: "text-green-700", icon: "🟣" },
 };
 
 const formatPlaceholderDisplay = (text: string, entities: DetectedEntity[]): JSX.Element => {
@@ -133,12 +134,12 @@ const getSummaryByCategory = (entities: DetectedEntity[]) => {
   const summary = entities.reduce((acc, entity) => {
     acc[entity.type] = (acc[entity.type] || 0) + 1;
     return acc;
-  }, {} as Record<string, number>);
+  }, {} as Record<SensitiveDataType, number>);
 
   return Object.entries(summary).map(([type, count]) => ({
-    type,
+    type: type as SensitiveDataType,
     count,
-    ...categoryColors[type],
+    ...categoryColors[type as SensitiveDataType],
   }));
 };
 
@@ -281,7 +282,7 @@ export function StepProcessor() {
     });
   };
 
-  const handleRemoveEntity = (type: string, value: string) => {
+  const handleRemoveEntity = (type: SensitiveDataType, value: string) => {
     const newEntities = entities.filter(e => !(e.type === type && e.value === value));
     setEntities(newEntities);
     const newMaskedText = maskText(inputText, newEntities);
