@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -28,11 +27,9 @@ import {
   maskText,
   restoreText,
   validatePlaceholders,
-  validatePlaceholdersDetailed,
   generatePlaceholder,
   type DetectedEntity,
   type SensitiveDataType,
-  type ValidationResult,
 } from "@/lib/text-processor";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -172,13 +169,6 @@ export function StepProcessor() {
   });
   const { toast } = useToast();
 
-  const [validationResult, setValidationResult] = useState<ValidationResult>({
-    isValid: true,
-    missingPlaceholders: [],
-    alteredPlaceholders: [],
-    invalidFormatPlaceholders: [],
-  });
-
   const handleDetectAndMask = () => {
     if (!inputText) {
       toast({
@@ -219,7 +209,6 @@ export function StepProcessor() {
         description: "The text is ready for external processing.",
       });
       setCurrentStep(2);
-      setMaskedText(maskedText);
     } catch (err) {
       toast({
         title: "❗ Failed to copy",
@@ -519,97 +508,51 @@ export function StepProcessor() {
                 Ensure placeholders remain unchanged when processing externally. Modifications may prevent successful re-identification.
               </p>
             </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Original Masked Text (Reference)</Label>
-              <div className="p-4 bg-muted/50 rounded-lg font-mono text-sm max-h-[100px] overflow-y-auto">
-                {formatPlaceholderDisplay(maskedText, entities)}
-              </div>
-            </div>
             
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Paste Modified Text</Label>
-              <Textarea
-                value={maskedText}
-                onChange={(e) => {
-                  const newText = e.target.value;
-                  setMaskedText(newText);
-                  setValidationResult(validatePlaceholdersDetailed(newText, entities));
-                }}
-                placeholder="Paste the modified masked text here after processing externally..."
-                className="min-h-[150px] max-h-[150px] font-mono text-sm overflow-y-auto"
-              />
-            </div>
+            <Textarea
+              value={maskedText}
+              onChange={(e) => setMaskedText(e.target.value)}
+              placeholder="Paste the modified masked text here after external processing..."
+              className="min-h-[200px] max-h-[200px] font-mono text-sm overflow-y-auto"
+            />
             
             {maskedText && (
-              <div className={`p-4 rounded-lg space-y-2 ${
-                validationResult.isValid 
-                  ? 'bg-green-50 border border-green-200'
-                  : 'bg-yellow-50 border border-yellow-200'
+              <div className={`p-3 rounded-lg flex items-center gap-2 ${
+                validatePlaceholders(maskedText, entities) 
+                  ? 'bg-green-50 text-green-700 border border-green-200'
+                  : 'bg-yellow-50 text-yellow-700 border border-yellow-200'
               }`}>
-                <div className="flex items-center gap-2">
-                  <span>{validationResult.isValid ? '✅' : '❗'}</span>
-                  <p className={`text-sm font-medium ${
-                    validationResult.isValid ? 'text-green-700' : 'text-yellow-700'
-                  }`}>
-                    {validationResult.isValid 
-                      ? "Validation successful! Ready to restore original data."
-                      : "Warning: Some placeholders have been altered. Review before proceeding."}
-                  </p>
-                </div>
-
-                {!validationResult.isValid && (
-                  <div className="pl-6 space-y-2">
-                    {validationResult.missingPlaceholders.length > 0 && (
-                      <div className="text-sm text-yellow-700">
-                        <p className="font-medium">Missing Placeholders:</p>
-                        <ul className="list-disc pl-4 pt-1 space-y-1">
-                          {validationResult.missingPlaceholders.map((placeholder, idx) => (
-                            <li key={idx} className="font-mono text-xs">{placeholder}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    {validationResult.invalidFormatPlaceholders.length > 0 && (
-                      <div className="text-sm text-yellow-700">
-                        <p className="font-medium">Invalid Format Placeholders:</p>
-                        <ul className="list-disc pl-4 pt-1 space-y-1">
-                          {validationResult.invalidFormatPlaceholders.map((placeholder, idx) => (
-                            <li key={idx} className="font-mono text-xs">{placeholder}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
+                {validatePlaceholders(maskedText, entities) ? (
+                  <>
+                    <span>✅</span>
+                    <p className="text-sm">
+                      Validation successful! Ready to restore original data.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <span>❗</span>
+                    <p className="text-sm">
+                      Warning: Some placeholders have been altered. Please check the text and ensure all placeholders are intact.
+                    </p>
+                  </>
                 )}
               </div>
             )}
             
             <div className="flex justify-between items-center">
-              <div className="space-x-2">
-                <Button variant="outline" onClick={() => setCurrentStep(1)}>
-                  <ChevronLeft className="mr-2 h-4 w-4" />
-                  Back
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={() => {
-                    setMaskedText(maskedText);
-                    setValidationResult(validatePlaceholdersDetailed(maskedText, entities));
-                  }}
-                >
-                  <RotateCcw className="mr-2 h-4 w-4" />
-                  Reset & Revalidate
-                </Button>
-              </div>
+              <Button variant="outline" onClick={() => setCurrentStep(1)}>
+                <ChevronLeft className="mr-2 h-4 w-4" />
+                Back
+              </Button>
               
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button 
                       onClick={handleRestore}
-                      variant={validationResult.isValid ? "default" : "outline"}
-                      disabled={!maskedText || !validationResult.isValid}
+                      variant={validatePlaceholders(maskedText, entities) ? "default" : "outline"}
+                      disabled={!maskedText || !validatePlaceholders(maskedText, entities)}
                     >
                       <Eye className="mr-2 h-4 w-4" />
                       Restore Original Data
@@ -618,7 +561,7 @@ export function StepProcessor() {
                   <TooltipContent>
                     {!maskedText 
                       ? "Please paste the masked text to proceed"
-                      : !validationResult.isValid
+                      : !validatePlaceholders(maskedText, entities)
                       ? "All placeholders must be intact to restore data"
                       : "Click to restore the original text"}
                   </TooltipContent>

@@ -1,3 +1,4 @@
+
 export type SensitiveDataType = 'name' | 'email' | 'phone' | 'address' | 'ssn' | 'dob' | 'account';
 
 export interface DetectedEntity {
@@ -223,43 +224,4 @@ export const validatePlaceholders = (
     }
   }
   return true;
-};
-
-export interface ValidationResult {
-  isValid: boolean;
-  missingPlaceholders: string[];
-  alteredPlaceholders: string[];
-  invalidFormatPlaceholders: string[];
-}
-
-export const validatePlaceholdersDetailed = (
-  text: string,
-  entities: DetectedEntity[]
-): ValidationResult => {
-  const result: ValidationResult = {
-    isValid: true,
-    missingPlaceholders: [],
-    alteredPlaceholders: [],
-    invalidFormatPlaceholders: [],
-  };
-
-  for (const entity of entities) {
-    if (!text.includes(entity.placeholder)) {
-      result.isValid = false;
-      result.missingPlaceholders.push(entity.placeholder);
-    }
-
-    // Check for malformed placeholders
-    const placeholderRegex = /<<UID:[A-Z]+:\d{6}>>/g;
-    const matches = text.match(placeholderRegex) || [];
-    
-    matches.forEach(match => {
-      if (!entities.some(e => e.placeholder === match)) {
-        result.invalidFormatPlaceholders.push(match);
-        result.isValid = false;
-      }
-    });
-  }
-
-  return result;
 };
