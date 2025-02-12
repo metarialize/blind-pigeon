@@ -592,7 +592,7 @@ export function StepProcessor() {
                 className="w-full sm:w-auto ml-2"
               >
                 <Copy className="mr-2 h-4 w-4" />
-                Copy Redacted Text
+                Copy
               </Button>
             </div>
           </div>
@@ -617,18 +617,17 @@ export function StepProcessor() {
             <div className="space-y-2">
               <Label className="text-sm font-medium">Paste Modified Text</Label>
               <Textarea
-                value={maskedText}
+                value=""
                 onChange={(e) => {
                   const newText = e.target.value;
-                  setMaskedText(newText);
-                  setValidationResult(validatePlaceholdersDetailed(newText, entities));
+                  handlePaste(newText);
                 }}
                 placeholder="Paste the modified masked text here after processing externally..."
                 className="min-h-[150px] font-mono text-sm"
               />
             </div>
             
-            {renderValidationWarnings()}
+            {maskedText && renderValidationWarnings()}
             
             <div className="flex justify-between items-center">
               <Button variant="outline" onClick={() => setCurrentStep(1)}>
@@ -679,7 +678,7 @@ export function StepProcessor() {
             <div className="space-y-2">
               <Label className="text-sm font-medium">Paste Modified Text</Label>
               <Textarea
-                value={maskedText}
+                value=""
                 onChange={(e) => {
                   const newText = e.target.value;
                   setMaskedText(newText);
