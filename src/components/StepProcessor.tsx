@@ -209,6 +209,7 @@ export function StepProcessor() {
         description: "The text is ready for external processing.",
       });
       setCurrentStep(2);
+      setMaskedText(maskedText);
     } catch (err) {
       toast({
         title: "❗ Failed to copy",
