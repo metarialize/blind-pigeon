@@ -1,5 +1,3 @@
-import stringSimilarity from 'string-similarity';
-
 export type SensitiveDataType = 'name' | 'email' | 'phone' | 'address' | 'ssn' | 'dob' | 'account';
 
 export interface DetectedEntity {
@@ -9,25 +7,8 @@ export interface DetectedEntity {
   index: number;
 }
 
-// Unicode markers for placeholder wrapping
-const ZERO_WIDTH_SPACE = '\u200C';
-const LEFT_BRACKET = '⟦';
-const RIGHT_BRACKET = '⟧';
-
 export const generatePlaceholder = (type: SensitiveDataType, index: number): string => {
-  const innerPlaceholder = `UID:${type.toUpperCase()}:${index.toString().padStart(6, '0')}`;
-  // Add zero-width spaces and mathematical brackets for AI resistance
-  return `${ZERO_WIDTH_SPACE}${LEFT_BRACKET}${innerPlaceholder}${RIGHT_BRACKET}${ZERO_WIDTH_SPACE}`;
-};
-
-// Fuzzy matching for placeholder validation
-const SIMILARITY_THRESHOLD = 0.85;
-
-const isPlaceholderSimilar = (text: string, placeholder: string): boolean => {
-  // Remove zero-width spaces and normalize for comparison
-  const normalizedText = text.replace(/[\u200B-\u200D\uFEFF]/g, '');
-  const normalizedPlaceholder = placeholder.replace(/[\u200B-\u200D\uFEFF]/g, '');
-  return stringSimilarity.compareTwoStrings(normalizedText, normalizedPlaceholder) > SIMILARITY_THRESHOLD;
+  return `<<UID:${type.toUpperCase()}:${index.toString().padStart(6, '0')}>>`;
 };
 
 export const detectSensitiveData = (text: string): DetectedEntity[] => {
@@ -228,16 +209,8 @@ export const detectSensitiveData = (text: string): DetectedEntity[] => {
 };
 
 export const maskText = (text: string, entities: DetectedEntity[]): string => {
-  // Enhanced instructions with warning about AI modifications
-  const instructions = 
-`⚠️ IMPORTANT - READ BEFORE PROCESSING ⚠️
-1. The following text contains special placeholders that MUST remain intact
-2. Format: ${LEFT_BRACKET}UID:TYPE:XXXXXX${RIGHT_BRACKET}
-3. DO NOT modify, remove, or change these placeholders
-4. AI tools may unintentionally alter these placeholders
-5. Keep the exact format and characters of each placeholder
-
-`;
+  // Add instructions at the beginning of the masked text
+  const instructions = `[IMPORTANT: Please maintain all placeholder tags (format: <<UID:TYPE:XXXXXX>>) exactly as they appear. These are essential for restoring the original sensitive information. Do not modify, remove, or change the format of any placeholder.]\n\n`;
   
   let maskedText = text;
   // Sort entities by index in descending order to replace from end to start
@@ -260,17 +233,22 @@ export const restoreText = (
   let restoredText = maskedText;
   
   for (const entity of entities) {
-    // Use fuzzy matching to find similar placeholders
-    const regex = new RegExp(escapeRegExp(entity.placeholder.replace(/[\u200B-\u200D\uFEFF]/g, '')), 'g');
-    restoredText = restoredText.replace(regex, entity.value);
+    restoredText = restoredText.replace(entity.placeholder, entity.value);
   }
   
   return restoredText;
 };
 
-// Helper function to escape special characters in regex
-const escapeRegExp = (string: string): string => {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+export const validatePlaceholders = (
+  text: string,
+  entities: DetectedEntity[]
+): boolean => {
+  for (const entity of entities) {
+    if (!text.includes(entity.placeholder)) {
+      return false;
+    }
+  }
+  return true;
 };
 
 export interface ValidationResult {
@@ -278,20 +256,7 @@ export interface ValidationResult {
   missingPlaceholders: string[];
   alteredPlaceholders: string[];
   invalidFormatPlaceholders: string[];
-  recoverable: boolean;
-  similarPlaceholders: Array<{
-    original: string;
-    found: string;
-    similarity: number;
-  }>;
 }
-
-export const validatePlaceholders = (
-  text: string,
-  entities: DetectedEntity[]
-): boolean => {
-  return validatePlaceholdersDetailed(text, entities).isValid;
-};
 
 export const validatePlaceholdersDetailed = (
   text: string,
@@ -302,52 +267,25 @@ export const validatePlaceholdersDetailed = (
     missingPlaceholders: [],
     alteredPlaceholders: [],
     invalidFormatPlaceholders: [],
-    recoverable: true,
-    similarPlaceholders: [],
   };
 
-  // Remove instruction block if present
-  const contentStart = text.indexOf('⚠️ IMPORTANT');
-  const contentToCheck = contentStart >= 0 ? text.slice(text.indexOf('\n\n', contentStart) + 2) : text;
-
   for (const entity of entities) {
-    const normalizedPlaceholder = entity.placeholder.replace(/[\u200B-\u200D\uFEFF]/g, '');
-    
-    if (!contentToCheck.includes(normalizedPlaceholder)) {
+    if (!text.includes(entity.placeholder)) {
       result.isValid = false;
       result.missingPlaceholders.push(entity.placeholder);
+    }
 
-      // Check for similar placeholders using fuzzy matching
-      const possibleMatch = contentToCheck.match(new RegExp(`[^${LEFT_BRACKET}]*${escapeRegExp(normalizedPlaceholder.slice(1, -1))}[^${RIGHT_BRACKET}]*`, 'g'));
-      if (possibleMatch) {
-        possibleMatch.forEach(match => {
-          const similarity = stringSimilarity.compareTwoStrings(match, normalizedPlaceholder);
-          if (similarity > SIMILARITY_THRESHOLD) {
-            result.recoverable = true;
-            result.similarPlaceholders.push({
-              original: entity.placeholder,
-              found: match,
-              similarity,
-            });
-          }
-        });
+    // Check for malformed placeholders
+    const placeholderRegex = /<<UID:[A-Z]+:\d{6}>>/g;
+    const matches = text.match(placeholderRegex) || [];
+    
+    matches.forEach(match => {
+      if (!entities.some(e => e.placeholder === match)) {
+        result.invalidFormatPlaceholders.push(match);
+        result.isValid = false;
       }
-    }
+    });
   }
-
-  // Check for invalid format placeholders
-  const placeholderRegex = new RegExp(`${LEFT_BRACKET}[^${RIGHT_BRACKET}]+${RIGHT_BRACKET}`, 'g');
-  const matches = contentToCheck.match(placeholderRegex) || [];
-  
-  matches.forEach(match => {
-    if (!entities.some(e => isPlaceholderSimilar(match, e.placeholder))) {
-      result.invalidFormatPlaceholders.push(match);
-      result.isValid = false;
-    }
-  });
-
-  // Set overall recoverability
-  result.recoverable = result.recoverable && result.similarPlaceholders.length > 0;
 
   return result;
 };
