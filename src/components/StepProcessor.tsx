@@ -391,71 +391,14 @@ export function StepProcessor() {
       case 1:
         return (
           <div className="space-y-4">
-            <div className="flex justify-end mb-2">
-              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Manual Mask
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Add Item to Mask</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="value">Text to Mask</Label>
-                      <Input
-                        id="value"
-                        value={manualValue}
-                        onChange={(e) => setManualValue(e.target.value)}
-                        placeholder="Enter text to mask..."
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="type">Type</Label>
-                      <Select
-                        value={manualType}
-                        onValueChange={(value: keyof typeof categoryColors) => setManualType(value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Object.entries(categoryColors).map(([type, { icon }]) => (
-                            <SelectItem key={type} value={type}>
-                              {icon} {type}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <Button onClick={handleAddManualEntity}>Add Item</Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
-              
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowOriginal(!showOriginal)}
-                className="ml-2 transition-all duration-200"
-              >
-                {showOriginal ? (
-                  <>
-                    <EyeOff className="mr-2 h-4 w-4" />
-                    Show Masked
-                  </>
-                ) : (
-                  <>
-                    <Eye className="mr-2 h-4 w-4" />
-                    Show Original
-                  </>
-                )}
-              </Button>
+            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg mb-4">
+              <p className="text-sm text-yellow-800 flex items-center">
+                <span className="mr-2">⚠️</span>
+                Ensure placeholders remain unchanged when processing externally. Modifications may prevent successful re-identification.
+              </p>
             </div>
-            <div className="p-4 border rounded-lg bg-white font-mono text-sm whitespace-pre-wrap transition-all duration-300">
+            
+            <div className="max-h-[200px] overflow-y-auto p-4 border rounded-lg bg-white font-mono text-sm whitespace-pre-wrap transition-all duration-300">
               {showOriginal ? (
                 <div className="animate-fade-in">
                   {inputText}
@@ -466,6 +409,7 @@ export function StepProcessor() {
                 </div>
               )}
             </div>
+
             <Collapsible className="border rounded-lg bg-muted/50">
               <CollapsibleTrigger asChild>
                 <Button 
@@ -539,14 +483,6 @@ export function StepProcessor() {
                 <ChevronLeft className="mr-2 h-4 w-4" />
                 Back
               </Button>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => handleExport('txt')}>
-                  Export as TXT
-                </Button>
-                <Button variant="outline" onClick={() => handleExport('json')}>
-                  Export as JSON
-                </Button>
-              </div>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -577,19 +513,14 @@ export function StepProcessor() {
               value={maskedText}
               onChange={(e) => setMaskedText(e.target.value)}
               placeholder="Paste the processed masked text here..."
-              className="min-h-[200px] font-mono text-sm"
+              className="min-h-[200px] max-h-[200px] font-mono text-sm overflow-y-auto"
             />
             
-            <div className="flex flex-col gap-4 sm:flex-row sm:justify-between items-center">
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => handleExport('txt')}>
-                  Export as TXT
-                </Button>
-                <Button variant="outline" onClick={() => handleExport('json')}>
-                  Export as JSON
-                </Button>
-              </div>
-              
+            <div className="flex justify-between items-center">
+              <Button variant="outline" onClick={() => setCurrentStep(1)}>
+                <ChevronLeft className="mr-2 h-4 w-4" />
+                Back
+              </Button>
               <Button onClick={handleCopy} className="w-full sm:w-auto">
                 <Copy className="mr-2 h-4 w-4" />
                 Copy Masked Text
@@ -597,10 +528,6 @@ export function StepProcessor() {
             </div>
             
             <div className="flex justify-between items-center pt-4 border-t">
-              <Button variant="outline" onClick={() => setCurrentStep(1)}>
-                <ChevronLeft className="mr-2 h-4 w-4" />
-                Back
-              </Button>
               <Button 
                 onClick={handleRestore}
                 variant={maskedText ? "default" : "outline"}
