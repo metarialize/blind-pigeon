@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -206,14 +205,58 @@ export function StepProcessor() {
     try {
       await navigator.clipboard.writeText(maskedText);
       toast({
-        title: "Copied to clipboard",
-        description: "The masked text has been copied to your clipboard.",
+        title: "Masked text copied successfully!",
+        description: "The text is ready for external processing.",
       });
       setCurrentStep(2);
     } catch (err) {
       toast({
         title: "Failed to copy",
         description: "Please try copying the text manually.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleExport = (format: 'txt' | 'json') => {
+    try {
+      let content = '';
+      let mimeType = '';
+      let fileExtension = '';
+      
+      if (format === 'json') {
+        content = JSON.stringify({
+          maskedText,
+          timestamp: new Date().toISOString(),
+          entityCount: entities.length,
+        }, null, 2);
+        mimeType = 'application/json';
+        fileExtension = 'json';
+      } else {
+        content = maskedText;
+        mimeType = 'text/plain';
+        fileExtension = 'txt';
+      }
+
+      const blob = new Blob([content], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const date = new Date().toISOString().split('T')[0].replace(/-/g, '');
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `masked_text_${date}.${fileExtension}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "File exported successfully",
+        description: `Saved as masked_text_${date}.${fileExtension}`,
+      });
+    } catch (err) {
+      toast({
+        title: "Export failed",
+        description: "There was an error exporting the file.",
         variant: "destructive",
       });
     }
@@ -484,7 +527,15 @@ export function StepProcessor() {
                 <ChevronLeft className="mr-2 h-4 w-4" />
                 Back
               </Button>
-              <Button onClick={handleCopy}>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => handleExport('txt')}>
+                  Export as TXT
+                </Button>
+                <Button variant="outline" onClick={() => handleExport('json')}>
+                  Export as JSON
+                </Button>
+              </div>
+              <Button onClick={handleCopy} className="w-full sm:w-auto">
                 <Copy className="mr-2 h-4 w-4" />
                 Copy Masked Text
               </Button>
@@ -494,18 +545,46 @@ export function StepProcessor() {
       case 2:
         return (
           <div className="space-y-4">
+            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg mb-4">
+              <p className="text-sm text-yellow-800 flex items-center">
+                <span className="mr-2">⚠️</span>
+                Ensure placeholders remain unchanged when processing externally. Modifications may prevent successful re-identification.
+              </p>
+            </div>
+            
             <Textarea
               value={maskedText}
               onChange={(e) => setMaskedText(e.target.value)}
               placeholder="Paste the processed masked text here..."
               className="min-h-[200px] font-mono text-sm"
             />
-            <div className="flex justify-between items-center">
+            
+            <div className="flex flex-col gap-4 sm:flex-row sm:justify-between items-center">
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => handleExport('txt')}>
+                  Export as TXT
+                </Button>
+                <Button variant="outline" onClick={() => handleExport('json')}>
+                  Export as JSON
+                </Button>
+              </div>
+              
+              <Button onClick={handleCopy} className="w-full sm:w-auto">
+                <Copy className="mr-2 h-4 w-4" />
+                Copy Masked Text
+              </Button>
+            </div>
+            
+            <div className="flex justify-between items-center pt-4 border-t">
               <Button variant="outline" onClick={() => setCurrentStep(1)}>
                 <ChevronLeft className="mr-2 h-4 w-4" />
                 Back
               </Button>
-              <Button onClick={handleRestore}>
+              <Button 
+                onClick={handleRestore}
+                variant={maskedText ? "default" : "outline"}
+                disabled={!maskedText}
+              >
                 <Eye className="mr-2 h-4 w-4" />
                 Restore Original Data
               </Button>
