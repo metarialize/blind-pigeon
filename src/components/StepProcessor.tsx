@@ -515,7 +515,7 @@ export function StepProcessor() {
                         className="w-full flex justify-between items-center p-4 hover:bg-muted/80"
                       >
                         <span className="font-medium">
-                          Detected & Redacted Items ({entities.length})
+                          Redacted Items ({entities.length})
                         </span>
                         <ChevronDown className="h-4 w-4" />
                       </Button>
