@@ -512,30 +512,61 @@ export function StepProcessor() {
             <Textarea
               value={maskedText}
               onChange={(e) => setMaskedText(e.target.value)}
-              placeholder="Paste the processed masked text here..."
+              placeholder="Paste the modified masked text here after external processing..."
               className="min-h-[200px] max-h-[200px] font-mono text-sm overflow-y-auto"
             />
+            
+            {maskedText && (
+              <div className={`p-3 rounded-lg flex items-center gap-2 ${
+                validatePlaceholders(maskedText, entities) 
+                  ? 'bg-green-50 text-green-700 border border-green-200'
+                  : 'bg-yellow-50 text-yellow-700 border border-yellow-200'
+              }`}>
+                {validatePlaceholders(maskedText, entities) ? (
+                  <>
+                    <span>✅</span>
+                    <p className="text-sm">
+                      Validation successful! Ready to restore original data.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <span>❗</span>
+                    <p className="text-sm">
+                      Warning: Some placeholders have been altered. Please check the text and ensure all placeholders are intact.
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
             
             <div className="flex justify-between items-center">
               <Button variant="outline" onClick={() => setCurrentStep(1)}>
                 <ChevronLeft className="mr-2 h-4 w-4" />
                 Back
               </Button>
-              <Button onClick={handleCopy} className="w-full sm:w-auto">
-                <Copy className="mr-2 h-4 w-4" />
-                Copy Masked Text
-              </Button>
-            </div>
-            
-            <div className="flex justify-between items-center pt-4 border-t">
-              <Button 
-                onClick={handleRestore}
-                variant={maskedText ? "default" : "outline"}
-                disabled={!maskedText}
-              >
-                <Eye className="mr-2 h-4 w-4" />
-                Restore Original Data
-              </Button>
+              
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      onClick={handleRestore}
+                      variant={validatePlaceholders(maskedText, entities) ? "default" : "outline"}
+                      disabled={!maskedText || !validatePlaceholders(maskedText, entities)}
+                    >
+                      <Eye className="mr-2 h-4 w-4" />
+                      Restore Original Data
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {!maskedText 
+                      ? "Please paste the masked text to proceed"
+                      : !validatePlaceholders(maskedText, entities)
+                      ? "All placeholders must be intact to restore data"
+                      : "Click to restore the original text"}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           </div>
         );
