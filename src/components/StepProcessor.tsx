@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -176,8 +177,6 @@ export function StepProcessor() {
     missingPlaceholders: [],
     alteredPlaceholders: [],
     invalidFormatPlaceholders: [],
-    recoverable: true,
-    similarPlaceholders: []
   });
 
   const handleDetectAndMask = () => {
@@ -296,13 +295,10 @@ export function StepProcessor() {
       return;
     }
 
-    const validationResult = validatePlaceholdersDetailed(maskedText, entities);
-    setValidationResult(validationResult);
-
-    if (!validationResult.isValid) {
+    if (!validatePlaceholders(maskedText, entities)) {
       toast({
         title: "Invalid masked text",
-        description: `${validationResult.missingPlaceholders.length} placeholders are missing or modified.`,
+        description: "Some placeholders are missing or modified.",
         variant: "destructive",
       });
       return;
@@ -378,47 +374,6 @@ export function StepProcessor() {
       title: "Item removed",
       description: `Removed ${type} from masked items.`,
     });
-  };
-
-  const handlePaste = (newText: string) => {
-    setMaskedText(newText);
-    const validation = validatePlaceholdersDetailed(newText, entities);
-    setValidationResult(validation);
-    
-    if (!validation.isValid) {
-      const message = validation.recoverable 
-        ? `${validation.missingPlaceholders.length} placeholders need attention but may be recoverable.`
-        : `${validation.missingPlaceholders.length} placeholders are missing or modified.`;
-        
-      toast({
-        title: "Validation Warning",
-        description: message,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const renderMissingDataComparison = (validationResult: ValidationResult) => {
-    const missingEntities = entities.filter(entity => 
-      validationResult.missingPlaceholders.includes(entity.placeholder)
-    );
-
-    if (missingEntities.length === 0) return null;
-
-    return (
-      <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-        <h3 className="font-medium text-yellow-800 mb-2">Missing Sensitive Data:</h3>
-        <div className="space-y-2">
-          {missingEntities.map((entity, index) => (
-            <div key={index} className="flex items-start space-x-2 text-sm">
-              <span className="font-mono text-yellow-600">{entity.placeholder}</span>
-              <span className="text-muted-foreground">→</span>
-              <span className="font-medium text-yellow-900">Original value: {entity.value}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
   };
 
   const renderStepContent = (step: number) => {
@@ -576,39 +531,55 @@ export function StepProcessor() {
               <Label className="text-sm font-medium">Paste Modified Text</Label>
               <Textarea
                 value={maskedText}
-                onChange={(e) => handlePaste(e.target.value)}
+                onChange={(e) => {
+                  const newText = e.target.value;
+                  setMaskedText(newText);
+                  setValidationResult(validatePlaceholdersDetailed(newText, entities));
+                }}
                 placeholder="Paste the modified masked text here after processing externally..."
                 className="min-h-[150px] max-h-[150px] font-mono text-sm overflow-y-auto"
               />
             </div>
-
-            {!validationResult.isValid && (
-              <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg space-y-4">
-                <div>
-                  <h3 className="font-medium text-yellow-800 mb-2">Missing Sensitive Data:</h3>
-                  <div className="space-y-2">
-                    {entities
-                      .filter(entity => validationResult.missingPlaceholders.includes(entity.placeholder))
-                      .map((entity, index) => (
-                        <div key={index} className="flex items-start space-x-2 text-sm">
-                          <span className="font-mono text-yellow-600">{entity.placeholder}</span>
-                          <span className="text-muted-foreground">→</span>
-                          <span className="font-medium text-yellow-900">Original value: {entity.value}</span>
-                        </div>
-                      ))}
-                  </div>
+            
+            {maskedText && (
+              <div className={`p-4 rounded-lg space-y-2 ${
+                validationResult.isValid 
+                  ? 'bg-green-50 border border-green-200'
+                  : 'bg-yellow-50 border border-yellow-200'
+              }`}>
+                <div className="flex items-center gap-2">
+                  <span>{validationResult.isValid ? '✅' : '❗'}</span>
+                  <p className={`text-sm font-medium ${
+                    validationResult.isValid ? 'text-green-700' : 'text-yellow-700'
+                  }`}>
+                    {validationResult.isValid 
+                      ? "Validation successful! Ready to restore original data."
+                      : "Warning: Some placeholders have been altered. Review before proceeding."}
+                  </p>
                 </div>
 
-                {validationResult.similarPlaceholders.length > 0 && (
-                  <div>
-                    <h3 className="font-medium text-yellow-800 mb-2">Similar Placeholders Found:</h3>
-                    <div className="space-y-1">
-                      {validationResult.similarPlaceholders.map((placeholder, index) => (
-                        <div key={index} className="text-sm text-yellow-600 font-mono">
-                          {placeholder}
-                        </div>
-                      ))}
-                    </div>
+                {!validationResult.isValid && (
+                  <div className="pl-6 space-y-2">
+                    {validationResult.missingPlaceholders.length > 0 && (
+                      <div className="text-sm text-yellow-700">
+                        <p className="font-medium">Missing Placeholders:</p>
+                        <ul className="list-disc pl-4 pt-1 space-y-1">
+                          {validationResult.missingPlaceholders.map((placeholder, idx) => (
+                            <li key={idx} className="font-mono text-xs">{placeholder}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {validationResult.invalidFormatPlaceholders.length > 0 && (
+                      <div className="text-sm text-yellow-700">
+                        <p className="font-medium">Invalid Format Placeholders:</p>
+                        <ul className="list-disc pl-4 pt-1 space-y-1">
+                          {validationResult.invalidFormatPlaceholders.map((placeholder, idx) => (
+                            <li key={idx} className="font-mono text-xs">{placeholder}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -622,10 +593,13 @@ export function StepProcessor() {
                 </Button>
                 <Button 
                   variant="outline" 
-                  onClick={() => handlePaste(maskedText)}
+                  onClick={() => {
+                    setMaskedText(maskedText);
+                    setValidationResult(validatePlaceholdersDetailed(maskedText, entities));
+                  }}
                 >
                   <RotateCcw className="mr-2 h-4 w-4" />
-                  Revalidate
+                  Reset & Revalidate
                 </Button>
               </div>
               
@@ -638,19 +612,15 @@ export function StepProcessor() {
                       disabled={!maskedText || !validationResult.isValid}
                     >
                       <Eye className="mr-2 h-4 w-4" />
-                      {validationResult.recoverable && !validationResult.isValid 
-                        ? "Attempt Recovery" 
-                        : "Restore Original Data"}
+                      Restore Original Data
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
                     {!maskedText 
                       ? "Please paste the masked text to proceed"
                       : !validationResult.isValid
-                        ? validationResult.recoverable 
-                          ? "Some issues found but recovery may be possible"
-                          : "All placeholders must be intact to restore data"
-                        : "Click to restore the original text"}
+                      ? "All placeholders must be intact to restore data"
+                      : "Click to restore the original text"}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
