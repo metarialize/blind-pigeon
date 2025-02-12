@@ -302,7 +302,7 @@ export function StepProcessor() {
     if (!validationResult.isValid) {
       toast({
         title: "Invalid masked text",
-        description: "Some placeholders are missing or modified.",
+        description: `${validationResult.missingPlaceholders.length} placeholders are missing or modified.`,
         variant: "destructive",
       });
       return;
@@ -378,6 +378,29 @@ export function StepProcessor() {
       title: "Item removed",
       description: `Removed ${type} from masked items.`,
     });
+  };
+
+  const renderMissingDataComparison = (validationResult: ValidationResult) => {
+    const missingEntities = entities.filter(entity => 
+      validationResult.missingPlaceholders.includes(entity.placeholder)
+    );
+
+    if (missingEntities.length === 0) return null;
+
+    return (
+      <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+        <h3 className="font-medium text-yellow-800 mb-2">Missing Sensitive Data:</h3>
+        <div className="space-y-2">
+          {missingEntities.map((entity, index) => (
+            <div key={index} className="flex items-start space-x-2 text-sm">
+              <span className="font-mono text-yellow-600">{entity.placeholder}</span>
+              <span className="text-muted-foreground">→</span>
+              <span className="font-medium text-yellow-900">Original value: {entity.value}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   };
 
   const renderStepContent = (step: number) => {
@@ -544,50 +567,8 @@ export function StepProcessor() {
                 className="min-h-[150px] max-h-[150px] font-mono text-sm overflow-y-auto"
               />
             </div>
-            
-            {maskedText && (
-              <div className={`p-4 rounded-lg space-y-2 ${
-                validationResult.isValid 
-                  ? 'bg-green-50 border border-green-200'
-                  : 'bg-yellow-50 border border-yellow-200'
-              }`}>
-                <div className="flex items-center gap-2">
-                  <span>{validationResult.isValid ? '✅' : '❗'}</span>
-                  <p className={`text-sm font-medium ${
-                    validationResult.isValid ? 'text-green-700' : 'text-yellow-700'
-                  }`}>
-                    {validationResult.isValid 
-                      ? "Validation successful! Ready to restore original data."
-                      : "Warning: Some placeholders have been altered. Review before proceeding."}
-                  </p>
-                </div>
 
-                {!validationResult.isValid && (
-                  <div className="pl-6 space-y-2">
-                    {validationResult.missingPlaceholders.length > 0 && (
-                      <div className="text-sm text-yellow-700">
-                        <p className="font-medium">Missing Placeholders:</p>
-                        <ul className="list-disc pl-4 pt-1 space-y-1">
-                          {validationResult.missingPlaceholders.map((placeholder, idx) => (
-                            <li key={idx} className="font-mono text-xs">{placeholder}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    {validationResult.invalidFormatPlaceholders.length > 0 && (
-                      <div className="text-sm text-yellow-700">
-                        <p className="font-medium">Invalid Format Placeholders:</p>
-                        <ul className="list-disc pl-4 pt-1 space-y-1">
-                          {validationResult.invalidFormatPlaceholders.map((placeholder, idx) => (
-                            <li key={idx} className="font-mono text-xs">{placeholder}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
+            {!validationResult.isValid && renderMissingDataComparison(validationResult)}
             
             <div className="flex justify-between items-center">
               <div className="space-x-2">
