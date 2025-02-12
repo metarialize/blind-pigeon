@@ -10,10 +10,10 @@ const Index = () => {
             Blind Pigeon
           </h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Securely Redact and Restore Sensitive Information—Offline.
+            AI-Safe Text Protection
           </p>
           <p className="text-sm text-gray-500 mt-2 max-w-2xl mx-auto">
-            Protect your data with automated redaction and seamless restoration—all processed locally for maximum privacy.
+            Protect your sensitive information when using AI tools like ChatGPT, Claude, or XAI by automatically redacting and restoring private data—all processed locally for maximum privacy.
           </p>
         </div>
         
