@@ -1,3 +1,4 @@
+
 export type SensitiveDataType = 'name' | 'email' | 'phone' | 'address' | 'ssn' | 'dob' | 'account';
 
 export interface DetectedEntity {
@@ -7,8 +8,80 @@ export interface DetectedEntity {
   index: number;
 }
 
+export interface ValidationResult {
+  isValid: boolean;
+  missingPlaceholders: string[];
+  alteredPlaceholders: string[];
+  invalidFormatPlaceholders: string[];
+  recoverable: boolean;
+  suggestedFixes: { original: string; modified: string; }[];
+}
+
+// Zero-width characters for placeholder protection
+const ZERO_WIDTH_SPACE = '\u200C';
+
+// Bracket styles for different types to increase AI resistance
+const BRACKET_STYLES: Record<SensitiveDataType, { open: string; close: string }> = {
+  name: { open: '{', close: '}' },
+  email: { open: '⟦', close: '⟧' },
+  phone: { open: '⟪', close: '⟫' },
+  address: { open: '⟬', close: '⟭' },
+  ssn: { open: '❲', close: '❳' },
+  dob: { open: '⟨', close: '⟩' },
+  account: { open: '❴', close: '❵' },
+};
+
+// Calculate Levenshtein distance for fuzzy matching
+const levenshteinDistance = (a: string, b: string): number => {
+  if (a.length === 0) return b.length;
+  if (b.length === 0) return a.length;
+
+  const matrix = Array(b.length + 1).fill(null).map(() => Array(a.length + 1).fill(null));
+
+  for (let i = 0; i <= a.length; i++) matrix[0][i] = i;
+  for (let j = 0; j <= b.length; j++) matrix[j][0] = j;
+
+  for (let j = 1; j <= b.length; j++) {
+    for (let i = 1; i <= a.length; i++) {
+      const substitutionCost = a[i - 1] === b[j - 1] ? 0 : 1;
+      matrix[j][i] = Math.min(
+        matrix[j][i - 1] + 1,
+        matrix[j - 1][i] + 1,
+        matrix[j - 1][i - 1] + substitutionCost
+      );
+    }
+  }
+
+  return matrix[b.length][a.length];
+};
+
+// Function to find similar placeholders
+const findSimilarPlaceholder = (text: string, original: string): string | null => {
+  // Remove zero-width spaces for comparison
+  const cleanText = text.replace(new RegExp(ZERO_WIDTH_SPACE, 'g'), '');
+  const cleanOriginal = original.replace(new RegExp(ZERO_WIDTH_SPACE, 'g'), '');
+  
+  // Split text into potential placeholders
+  const potentialPlaceholders = cleanText.match(/[{⟦⟪⟬❲⟨❴][^}⟧⟫⟭❳⟩❵]+[}⟧⟫⟭❳⟩❵]/g) || [];
+  
+  let bestMatch: string | null = null;
+  let bestDistance = Infinity;
+  
+  for (const placeholder of potentialPlaceholders) {
+    const distance = levenshteinDistance(placeholder, cleanOriginal);
+    if (distance < bestDistance && distance <= 3) { // Allow up to 3 character differences
+      bestDistance = distance;
+      bestMatch = placeholder;
+    }
+  }
+  
+  return bestMatch;
+};
+
 export const generatePlaceholder = (type: SensitiveDataType, index: number): string => {
-  return `<<UID:${type.toUpperCase()}:${index.toString().padStart(6, '0')}>>`;
+  const { open, close } = BRACKET_STYLES[type];
+  const placeholder = `${open}UID:${type.toUpperCase()}:${index.toString().padStart(6, '0')}${close}`;
+  return `${ZERO_WIDTH_SPACE}${placeholder}${ZERO_WIDTH_SPACE}`;
 };
 
 export const detectSensitiveData = (text: string): DetectedEntity[] => {
@@ -187,7 +260,6 @@ export const detectSensitiveData = (text: string): DetectedEntity[] => {
 
 export const maskText = (text: string, entities: DetectedEntity[]): string => {
   let maskedText = text;
-  // Sort entities by index in descending order to replace from end to start
   const sortedEntities = [...entities].sort((a, b) => b.index - a.index);
   
   for (const entity of sortedEntities) {
@@ -200,14 +272,82 @@ export const maskText = (text: string, entities: DetectedEntity[]): string => {
   return maskedText;
 };
 
+export const validatePlaceholdersDetailed = (
+  maskedText: string,
+  entities: DetectedEntity[]
+): ValidationResult => {
+  const result: ValidationResult = {
+    isValid: true,
+    missingPlaceholders: [],
+    alteredPlaceholders: [],
+    invalidFormatPlaceholders: [],
+    recoverable: true,
+    suggestedFixes: [],
+  };
+
+  for (const entity of entities) {
+    const cleanPlaceholder = entity.placeholder.replace(new RegExp(ZERO_WIDTH_SPACE, 'g'), '');
+    
+    if (!maskedText.includes(entity.placeholder)) {
+      // Check for similar placeholders if exact match not found
+      const similarPlaceholder = findSimilarPlaceholder(maskedText, cleanPlaceholder);
+      
+      if (similarPlaceholder) {
+        result.suggestedFixes.push({
+          original: cleanPlaceholder,
+          modified: similarPlaceholder,
+        });
+        result.alteredPlaceholders.push(entity.placeholder);
+        result.recoverable = true;
+      } else {
+        result.missingPlaceholders.push(entity.placeholder);
+        // Only mark as unrecoverable if we can't find any similar matches
+        if (!result.suggestedFixes.length) {
+          result.recoverable = false;
+        }
+      }
+    }
+  }
+
+  // Check for any invalid format placeholders
+  const placeholderRegex = /[{⟦⟪⟬❲⟨❴][^}⟧⟫⟭❳⟩❵]+[}⟧⟫⟭❳⟩❵]/g;
+  const matches = maskedText.match(placeholderRegex) || [];
+  
+  matches.forEach(match => {
+    if (!entities.some(e => e.placeholder.includes(match))) {
+      result.invalidFormatPlaceholders.push(match);
+    }
+  });
+
+  result.isValid = result.missingPlaceholders.length === 0 && 
+                  result.alteredPlaceholders.length === 0 && 
+                  result.invalidFormatPlaceholders.length === 0;
+
+  return result;
+};
+
 export const restoreText = (
   maskedText: string,
   entities: DetectedEntity[]
 ): string => {
   let restoredText = maskedText;
   
+  // First, attempt to restore exact matches
   for (const entity of entities) {
-    restoredText = restoredText.replace(entity.placeholder, entity.value);
+    if (restoredText.includes(entity.placeholder)) {
+      restoredText = restoredText.replace(entity.placeholder, entity.value);
+    }
+  }
+  
+  // Then, attempt to restore from similar placeholders
+  const validation = validatePlaceholdersDetailed(maskedText, entities);
+  if (validation.recoverable && validation.suggestedFixes.length > 0) {
+    for (const { original, modified } of validation.suggestedFixes) {
+      const entity = entities.find(e => e.placeholder.includes(original));
+      if (entity) {
+        restoredText = restoredText.replace(modified, entity.value);
+      }
+    }
   }
   
   return restoredText;
@@ -217,49 +357,6 @@ export const validatePlaceholders = (
   text: string,
   entities: DetectedEntity[]
 ): boolean => {
-  for (const entity of entities) {
-    if (!text.includes(entity.placeholder)) {
-      return false;
-    }
-  }
-  return true;
-};
-
-export interface ValidationResult {
-  isValid: boolean;
-  missingPlaceholders: string[];
-  alteredPlaceholders: string[];
-  invalidFormatPlaceholders: string[];
-}
-
-export const validatePlaceholdersDetailed = (
-  text: string,
-  entities: DetectedEntity[]
-): ValidationResult => {
-  const result: ValidationResult = {
-    isValid: true,
-    missingPlaceholders: [],
-    alteredPlaceholders: [],
-    invalidFormatPlaceholders: [],
-  };
-
-  for (const entity of entities) {
-    if (!text.includes(entity.placeholder)) {
-      result.isValid = false;
-      result.missingPlaceholders.push(entity.placeholder);
-    }
-
-    // Check for malformed placeholders
-    const placeholderRegex = /<<UID:[A-Z]+:\d{6}>>/g;
-    const matches = text.match(placeholderRegex) || [];
-    
-    matches.forEach(match => {
-      if (!entities.some(e => e.placeholder === match)) {
-        result.invalidFormatPlaceholders.push(match);
-        result.isValid = false;
-      }
-    });
-  }
-
-  return result;
+  const validation = validatePlaceholdersDetailed(text, entities);
+  return validation.isValid;
 };

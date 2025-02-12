@@ -174,6 +174,8 @@ export function StepProcessor() {
     missingPlaceholders: [],
     alteredPlaceholders: [],
     invalidFormatPlaceholders: [],
+    recoverable: true,
+    suggestedFixes: []
   });
 
   const handleDetectAndMask = () => {
@@ -208,7 +210,83 @@ export function StepProcessor() {
     });
   };
 
+  const handlePaste = (newText: string) => {
+    setMaskedText(newText);
+    const validation = validatePlaceholdersDetailed(newText, entities);
+    setValidationResult(validation);
+    
+    if (!validation.isValid) {
+      const message = validation.recoverable 
+        ? "Some placeholders were modified but may be recoverable."
+        : "Some placeholders are missing or severely modified.";
+      
+      toast({
+        title: "Validation Warning",
+        description: message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const renderValidationWarnings = () => {
+    if (validationResult.isValid) return null;
+
+    return (
+      <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg space-y-4">
+        {validationResult.missingPlaceholders.length > 0 && (
+          <div>
+            <h3 className="font-medium text-yellow-800 mb-2">Missing Placeholders:</h3>
+            <div className="space-y-2">
+              {entities
+                .filter(entity => validationResult.missingPlaceholders.includes(entity.placeholder))
+                .map((entity, index) => (
+                  <div key={index} className="flex items-start space-x-2 text-sm">
+                    <span className="font-mono text-yellow-600">{entity.placeholder}</span>
+                    <span className="text-muted-foreground">→</span>
+                    <span className="font-medium text-yellow-900">Original value: {entity.value}</span>
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
+
+        {validationResult.suggestedFixes.length > 0 && (
+          <div>
+            <h3 className="font-medium text-yellow-800 mb-2">Suggested Fixes:</h3>
+            <div className="space-y-2">
+              {validationResult.suggestedFixes.map((fix, index) => (
+                <div key={index} className="text-sm space-y-1">
+                  <div className="font-mono text-yellow-600">Found: {fix.modified}</div>
+                  <div className="font-mono text-green-600">Should be: {fix.original}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const handleCopy = async () => {
+    const confirmCopy = await new Promise<boolean>((resolve) => {
+      Dialog({
+        title: "⚠️ Important: Preserve Placeholders",
+        description: "Ensure placeholders remain unchanged when using AI tools. Modifications may prevent re-identification of sensitive data.",
+        buttons: [
+          {
+            label: "Cancel",
+            onClick: () => resolve(false),
+          },
+          {
+            label: "Copy Anyway",
+            onClick: () => resolve(true),
+          },
+        ],
+      });
+    });
+
+    if (!confirmCopy) return;
+
     try {
       await navigator.clipboard.writeText(maskedText);
       toast({
@@ -216,7 +294,6 @@ export function StepProcessor() {
         description: "The text is ready for external processing.",
       });
       setCurrentStep(2);
-      setMaskedText(maskedText);
     } catch (err) {
       toast({
         title: "❗ Failed to copy",
