@@ -10,7 +10,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Eye, EyeOff, Copy, RotateCcw, ChevronLeft, ChevronRight } from "lucide-react";
+import { Eye, EyeOff, Copy, RotateCcw, ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 import {
   HoverCard,
   HoverCardTrigger,
@@ -27,8 +27,25 @@ import {
   maskText,
   restoreText,
   validatePlaceholders,
+  generatePlaceholder,
   type DetectedEntity,
 } from "@/lib/text-processor";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type Step = {
   title: string;
@@ -131,6 +148,9 @@ export function StepProcessor() {
   const [maskedText, setMaskedText] = useState("");
   const [entities, setEntities] = useState<DetectedEntity[]>([]);
   const [showOriginal, setShowOriginal] = useState(true);
+  const [manualValue, setManualValue] = useState("");
+  const [manualType, setManualType] = useState<keyof typeof categoryColors>("name");
+  const [dialogOpen, setDialogOpen] = useState(false);
   const { toast } = useToast();
 
   const handleDetectAndMask = () => {
@@ -223,6 +243,56 @@ export function StepProcessor() {
     });
   };
 
+  const handleAddManualEntity = () => {
+    if (!manualValue.trim()) {
+      toast({
+        title: "No value provided",
+        description: "Please enter a value to mask.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const newEntity: DetectedEntity = {
+      type: manualType,
+      value: manualValue,
+      placeholder: generatePlaceholder(manualType, entities.length),
+      index: inputText.indexOf(manualValue),
+    };
+
+    if (newEntity.index === -1) {
+      toast({
+        title: "Value not found",
+        description: "The provided value was not found in the text.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setEntities(prev => [...prev, newEntity].sort((a, b) => a.index - b.index));
+    const newMaskedText = maskText(inputText, [...entities, newEntity]);
+    setMaskedText(newMaskedText);
+    setManualValue("");
+    setDialogOpen(false);
+
+    toast({
+      title: "Item added",
+      description: `Added new ${manualType} to masked items.`,
+    });
+  };
+
+  const handleRemoveEntity = (type: string, value: string) => {
+    const newEntities = entities.filter(e => !(e.type === type && e.value === value));
+    setEntities(newEntities);
+    const newMaskedText = maskText(inputText, newEntities);
+    setMaskedText(newMaskedText);
+
+    toast({
+      title: "Item removed",
+      description: `Removed ${type} from masked items.`,
+    });
+  };
+
   const renderStepContent = (step: number) => {
     switch (step) {
       case 0:
@@ -250,6 +320,50 @@ export function StepProcessor() {
         return (
           <div className="space-y-4">
             <div className="flex justify-end mb-2">
+              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Manual Mask
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Add Item to Mask</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="value">Text to Mask</Label>
+                      <Input
+                        id="value"
+                        value={manualValue}
+                        onChange={(e) => setManualValue(e.target.value)}
+                        placeholder="Enter text to mask..."
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="type">Type</Label>
+                      <Select
+                        value={manualType}
+                        onValueChange={(value: keyof typeof categoryColors) => setManualType(value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(categoryColors).map(([type, { icon }]) => (
+                            <SelectItem key={type} value={type}>
+                              {icon} {type}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button onClick={handleAddManualEntity}>Add Item</Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+              
               <Button
                 variant="outline"
                 size="sm"
@@ -283,13 +397,26 @@ export function StepProcessor() {
             <div className="p-4 border rounded-lg bg-muted/50">
               <h3 className="font-medium mb-2">Detected & Masked Items:</h3>
               {entities.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
+                <div className="space-y-2">
                   {getSummaryByCategory(entities).map(({ type, count, icon, text }) => (
-                    <div
-                      key={type}
-                      className={`px-3 py-1.5 rounded-full text-sm animate-fade-in ${text} bg-white/50`}
-                    >
-                      {icon} {type}: {count}
+                    <div key={type} className="space-y-1">
+                      <div className={`text-sm font-medium ${text}`}>
+                        {icon} {type} ({count})
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {entities
+                          .filter(e => e.type === type)
+                          .map((entity, idx) => (
+                            <div
+                              key={`${type}-${idx}`}
+                              className={`group px-3 py-1.5 rounded-full text-sm flex items-center gap-2 animate-fade-in ${text} bg-white/50 hover:bg-white/80 transition-colors cursor-pointer`}
+                              onClick={() => handleRemoveEntity(entity.type, entity.value)}
+                            >
+                              <span>{entity.value}</span>
+                              <X className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </div>
+                          ))}
+                      </div>
                     </div>
                   ))}
                 </div>
