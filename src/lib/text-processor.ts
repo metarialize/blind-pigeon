@@ -1,3 +1,4 @@
+
 export type SensitiveDataType = 'name' | 'email' | 'phone' | 'address' | 'ssn' | 'dob' | 'account';
 
 export interface DetectedEntity {
@@ -256,6 +257,8 @@ export interface ValidationResult {
   missingPlaceholders: string[];
   alteredPlaceholders: string[];
   invalidFormatPlaceholders: string[];
+  recoverable: boolean;
+  similarPlaceholders: string[];
 }
 
 export const validatePlaceholdersDetailed = (
@@ -267,12 +270,22 @@ export const validatePlaceholdersDetailed = (
     missingPlaceholders: [],
     alteredPlaceholders: [],
     invalidFormatPlaceholders: [],
+    recoverable: true, // Assume recoverable by default
+    similarPlaceholders: [], // Track similar but not exact matches
   };
 
   for (const entity of entities) {
     if (!text.includes(entity.placeholder)) {
       result.isValid = false;
       result.missingPlaceholders.push(entity.placeholder);
+      
+      // Check for similar placeholders (e.g. with typos)
+      const similarPattern = new RegExp(entity.placeholder.replace(/[<>]/g, '.{1,2}'), 'g');
+      const similarMatches = text.match(similarPattern) || [];
+      result.similarPlaceholders.push(...similarMatches);
+      
+      // If we found similar matches, consider it recoverable
+      result.recoverable = result.similarPlaceholders.length > 0;
     }
 
     // Check for malformed placeholders
@@ -283,9 +296,12 @@ export const validatePlaceholdersDetailed = (
       if (!entities.some(e => e.placeholder === match)) {
         result.invalidFormatPlaceholders.push(match);
         result.isValid = false;
+        // If the format is wrong but recognizable, it's potentially recoverable
+        result.recoverable = true;
       }
     });
   }
 
   return result;
 };
+
