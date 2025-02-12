@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -29,6 +30,7 @@ import {
   validatePlaceholders,
   generatePlaceholder,
   type DetectedEntity,
+  type SensitiveDataType,
 } from "@/lib/text-processor";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
