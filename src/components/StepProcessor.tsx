@@ -10,7 +10,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Eye, EyeOff, Copy, RotateCcw, ChevronLeft, ChevronRight, Plus, X, ChevronDown, MoreHorizontal } from "lucide-react";
+import { Eye, EyeOff, Copy, RotateCcw, ChevronLeft, ChevronRight, Plus, X, ChevronDown } from "lucide-react";
 import {
   HoverCard,
   HoverCardTrigger,
@@ -27,9 +27,10 @@ import {
   maskText,
   restoreText,
   validatePlaceholders,
-  generatePlaceholder,
+  validatePlaceholdersDetailed,
   type DetectedEntity,
   type SensitiveDataType,
+  type ValidationResult,
 } from "@/lib/text-processor";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,8 +39,20 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogFooter,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
@@ -269,38 +282,49 @@ export function StepProcessor() {
 
   const handleCopy = async () => {
     const confirmCopy = await new Promise<boolean>((resolve) => {
-      Dialog({
-        title: "⚠️ Important: Preserve Placeholders",
-        description: "Ensure placeholders remain unchanged when using AI tools. Modifications may prevent re-identification of sensitive data.",
-        buttons: [
-          {
-            label: "Cancel",
-            onClick: () => resolve(false),
-          },
-          {
-            label: "Copy Anyway",
-            onClick: () => resolve(true),
-          },
-        ],
-      });
+      setDialogOpen(true);
+      const handleConfirm = (shouldCopy: boolean) => {
+        resolve(shouldCopy);
+        setDialogOpen(false);
+      };
+
+      return (
+        <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>⚠️ Important: Preserve Placeholders</AlertDialogTitle>
+              <AlertDialogDescription>
+                Ensure placeholders remain unchanged when using AI tools. Modifications may prevent re-identification of sensitive data.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => handleConfirm(false)}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(maskedText);
+                  toast({
+                    title: "✅ Masked text copied successfully!",
+                    description: "The text is ready for external processing.",
+                  });
+                  setCurrentStep(2);
+                } catch (err) {
+                  toast({
+                    title: "❗ Failed to copy",
+                    description: "Please try copying the text manually.",
+                    variant: "destructive",
+                  });
+                }
+                handleConfirm(true);
+              }}>
+                Copy Anyway
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      );
     });
 
     if (!confirmCopy) return;
-
-    try {
-      await navigator.clipboard.writeText(maskedText);
-      toast({
-        title: "✅ Masked text copied successfully!",
-        description: "The text is ready for external processing.",
-      });
-      setCurrentStep(2);
-    } catch (err) {
-      toast({
-        title: "❗ Failed to copy",
-        description: "Please try copying the text manually.",
-        variant: "destructive",
-      });
-    }
   };
 
   const handleProceedWithoutCopy = () => {
