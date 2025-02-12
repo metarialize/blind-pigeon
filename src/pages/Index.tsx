@@ -1,5 +1,5 @@
 
-import { TextProcessor } from "@/components/TextProcessor";
+import { StepProcessor } from "@/components/StepProcessor";
 
 const Index = () => {
   return (
@@ -15,7 +15,7 @@ const Index = () => {
           </p>
         </div>
         
-        <TextProcessor />
+        <StepProcessor />
       </div>
     </div>
   );
