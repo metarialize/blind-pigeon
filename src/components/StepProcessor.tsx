@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -177,6 +176,8 @@ export function StepProcessor() {
     missingPlaceholders: [],
     alteredPlaceholders: [],
     invalidFormatPlaceholders: [],
+    recoverable: true,
+    similarPlaceholders: [],
   });
 
   const handleDetectAndMask = () => {
@@ -295,7 +296,10 @@ export function StepProcessor() {
       return;
     }
 
-    if (!validatePlaceholders(maskedText, entities)) {
+    const validationResult = validatePlaceholdersDetailed(maskedText, entities);
+    setValidationResult(validationResult);
+
+    if (!validationResult.isValid) {
       toast({
         title: "Invalid masked text",
         description: "Some placeholders are missing or modified.",
