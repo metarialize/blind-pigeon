@@ -205,17 +205,29 @@ export function StepProcessor() {
     try {
       await navigator.clipboard.writeText(maskedText);
       toast({
-        title: "Masked text copied successfully!",
+        title: "✅ Masked text copied successfully!",
         description: "The text is ready for external processing.",
       });
       setCurrentStep(2);
     } catch (err) {
       toast({
-        title: "Failed to copy",
+        title: "❗ Failed to copy",
         description: "Please try copying the text manually.",
         variant: "destructive",
       });
     }
+  };
+
+  const handleProceedWithoutCopy = () => {
+    if (!maskedText) {
+      toast({
+        title: "❗ Action required",
+        description: "Please copy the masked text before proceeding to the next step.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setCurrentStep(2);
   };
 
   const handleExport = (format: 'txt' | 'json') => {
@@ -535,10 +547,19 @@ export function StepProcessor() {
                   Export as JSON
                 </Button>
               </div>
-              <Button onClick={handleCopy} className="w-full sm:w-auto">
-                <Copy className="mr-2 h-4 w-4" />
-                Copy Masked Text
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button onClick={handleCopy} className="w-full sm:w-auto">
+                      <Copy className="mr-2 h-4 w-4" />
+                      Copy Masked Text
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Click to copy and proceed to the next step</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           </div>
         );
