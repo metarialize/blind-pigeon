@@ -50,8 +50,6 @@ export function StepProcessor() {
   const [maskedText, setMaskedText] = useState("");
   const [entities, setEntities] = useState<DetectedEntity[]>([]);
   const [isMasked, setIsMasked] = useState(false);
-  const [showMasked, setShowMasked] = useState(false);
-  const [selectedEntities, setSelectedEntities] = useState<Set<number>>(new Set());
   const { toast } = useToast();
 
   const handleDetect = () => {
@@ -66,34 +64,30 @@ export function StepProcessor() {
 
     const detected = detectSensitiveData(inputText);
     setEntities(detected);
-    setSelectedEntities(new Set(detected.map((_, idx) => idx)));
     
     toast({
       title: "Detection complete",
       description: `Found ${detected.length} sensitive items.`,
     });
-    setCurrentStep(1);
   };
 
   const handleMask = () => {
-    const selectedEntityList = entities.filter((_, idx) => selectedEntities.has(idx));
-    if (selectedEntityList.length === 0) {
+    if (entities.length === 0) {
       toast({
         title: "No sensitive data",
-        description: "Please select at least one item to mask.",
+        description: "No sensitive data was detected to mask.",
         variant: "destructive",
       });
       return;
     }
 
-    const masked = maskText(inputText, selectedEntityList);
+    const masked = maskText(inputText, entities);
     setMaskedText(masked);
     setIsMasked(true);
-    setCurrentStep(2);
 
     toast({
       title: "Text masked successfully",
-      description: `${selectedEntityList.length} sensitive items were masked.`,
+      description: `${entities.length} sensitive items were masked.`,
     });
   };
 
@@ -147,23 +141,11 @@ export function StepProcessor() {
     setMaskedText("");
     setEntities([]);
     setIsMasked(false);
-    setShowMasked(false);
-    setSelectedEntities(new Set());
     setCurrentStep(0);
     toast({
       title: "Reset successful",
       description: "All text and stored data has been cleared.",
     });
-  };
-
-  const toggleEntity = (index: number) => {
-    const newSelection = new Set(selectedEntities);
-    if (newSelection.has(index)) {
-      newSelection.delete(index);
-    } else {
-      newSelection.add(index);
-    }
-    setSelectedEntities(newSelection);
   };
 
   const renderStepContent = (step: number) => {
@@ -192,39 +174,13 @@ export function StepProcessor() {
       case 1:
         return (
           <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Original Text Preview */}
-              <div className="space-y-2">
-                <h3 className="font-medium text-sm">Original Text</h3>
-                <div className="p-4 border rounded-lg bg-muted/50 font-mono text-sm whitespace-pre-wrap">
-                  {inputText}
-                </div>
-              </div>
-              
-              {/* Masked Preview */}
-              <div className="space-y-2">
-                <h3 className="font-medium text-sm">Masked Preview</h3>
-                <div className="p-4 border rounded-lg bg-muted/50 font-mono text-sm whitespace-pre-wrap">
-                  {maskText(inputText, entities.filter((_, idx) => selectedEntities.has(idx)))}
-                </div>
-              </div>
-            </div>
-
             <div className="p-4 border rounded-lg bg-muted/50">
               <h3 className="font-medium mb-2">Detected Items:</h3>
               {entities.length > 0 ? (
                 <ul className="space-y-2">
                   {entities.map((entity, idx) => (
-                    <li key={idx} className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        checked={selectedEntities.has(idx)}
-                        onChange={() => toggleEntity(idx)}
-                        className="rounded border-gray-300"
-                      />
-                      <span className="text-sm">
-                        {entity.type}: <code className="text-xs bg-muted px-1 py-0.5 rounded">{entity.value}</code>
-                      </span>
+                    <li key={idx} className="text-sm">
+                      {entity.type}: <code className="text-xs bg-muted px-1 py-0.5 rounded">{entity.value}</code>
                     </li>
                   ))}
                 </ul>
@@ -232,14 +188,13 @@ export function StepProcessor() {
                 <p className="text-sm text-muted-foreground">No sensitive data detected</p>
               )}
             </div>
-            
             <div className="flex justify-between items-center">
               <Button variant="outline" onClick={() => setCurrentStep(0)}>
                 <ChevronLeft className="mr-2 h-4 w-4" />
                 Back
               </Button>
               <Button onClick={handleMask}>
-                Apply Masking
+                Mask Data
                 <ChevronRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
@@ -248,27 +203,8 @@ export function StepProcessor() {
       case 2:
         return (
           <div className="space-y-4">
-            <div className="flex justify-end mb-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowMasked(!showMasked)}
-              >
-                {showMasked ? (
-                  <>
-                    <Eye className="mr-2 h-4 w-4" />
-                    Show Original
-                  </>
-                ) : (
-                  <>
-                    <EyeOff className="mr-2 h-4 w-4" />
-                    Show Masked
-                  </>
-                )}
-              </Button>
-            </div>
             <Textarea
-              value={showMasked ? maskedText : inputText}
+              value={maskedText}
               readOnly
               className="min-h-[200px] font-mono text-sm"
             />
