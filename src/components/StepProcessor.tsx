@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -158,7 +159,15 @@ export function StepProcessor() {
   const [manualValue, setManualValue] = useState("");
   const [manualType, setManualType] = useState<keyof typeof categoryColors>("name");
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [expandedCategories, setExpandedCategories] = useState<Record<SensitiveDataType, boolean>>({});
+  const [expandedCategories, setExpandedCategories] = useState<Record<SensitiveDataType, boolean>>({
+    name: false,
+    email: false,
+    phone: false,
+    address: false,
+    ssn: false,
+    dob: false,
+    account: false,
+  });
   const { toast } = useToast();
 
   const handleDetectAndMask = () => {
