@@ -314,6 +314,14 @@ export function StepProcessor() {
   };
 
   const handleCopy = () => {
+    if (!maskedText) {
+      toast({
+        title: "No text to copy",
+        description: "Please process some text first.",
+        variant: "destructive",
+      });
+      return;
+    }
     setDialogOpen(true);
   };
 
@@ -324,7 +332,7 @@ export function StepProcessor() {
         title: "✅ Copied successfully",
         description: "The masked text is ready for external processing.",
       });
-      setCurrentStep(2);
+      setCurrentStep(3);
     } catch (err) {
       toast({
         title: "❗ Failed to copy",
@@ -344,7 +352,7 @@ export function StepProcessor() {
       });
       return;
     }
-    setCurrentStep(2);
+    setCurrentStep(3);
   };
 
   const handleExport = (format: 'txt' | 'json') => {
@@ -600,19 +608,14 @@ export function StepProcessor() {
                 <ChevronLeft className="mr-2 h-4 w-4" />
                 Back
               </Button>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button onClick={handleCopy} className="w-full sm:w-auto">
-                      <Copy className="mr-2 h-4 w-4" />
-                      Copy Masked Text
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Click to copy and proceed to the next step</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <Button 
+                onClick={handleCopy}
+                disabled={!maskedText}
+                className="w-full sm:w-auto ml-2"
+              >
+                <Copy className="mr-2 h-4 w-4" />
+                Copy Masked Text
+              </Button>
             </div>
           </div>
         );
