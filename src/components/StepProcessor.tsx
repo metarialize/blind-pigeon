@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -111,6 +110,19 @@ const formatPlaceholderDisplay = (text: string, entities: DetectedEntity[]): JSX
   }
   
   return <>{elements}</>;
+};
+
+const getSummaryByCategory = (entities: DetectedEntity[]) => {
+  const summary = entities.reduce((acc, entity) => {
+    acc[entity.type] = (acc[entity.type] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  return Object.entries(summary).map(([type, count]) => ({
+    type,
+    count,
+    ...categoryColors[type],
+  }));
 };
 
 export function StepProcessor() {
@@ -271,18 +283,16 @@ export function StepProcessor() {
             <div className="p-4 border rounded-lg bg-muted/50">
               <h3 className="font-medium mb-2">Detected & Masked Items:</h3>
               {entities.length > 0 ? (
-                <ul className="space-y-2">
-                  {entities.map((entity, idx) => (
-                    <li key={idx} className="text-sm animate-fade-in" style={{ animationDelay: `${idx * 100}ms` }}>
-                      <span className={`${categoryColors[entity.type]?.text || ""}`}>
-                        {categoryColors[entity.type]?.icon} {entity.type}:
-                      </span>{" "}
-                      <code className="text-xs bg-muted px-1 py-0.5 rounded">
-                        {entity.value}
-                      </code>
-                    </li>
+                <div className="flex flex-wrap gap-2">
+                  {getSummaryByCategory(entities).map(({ type, count, icon, text }) => (
+                    <div
+                      key={type}
+                      className={`px-3 py-1.5 rounded-full text-sm animate-fade-in ${text} bg-white/50`}
+                    >
+                      {icon} {type}: {count}
+                    </div>
                   ))}
-                </ul>
+                </div>
               ) : (
                 <p className="text-sm text-muted-foreground">No sensitive data detected</p>
               )}
@@ -353,3 +363,5 @@ export function StepProcessor() {
     </TooltipProvider>
   );
 }
+
+export default StepProcessor;
