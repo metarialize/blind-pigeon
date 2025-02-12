@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -75,8 +74,8 @@ type Step = {
 
 const steps: Step[] = [
   {
-    title: "Enter Text",
-    description: "Paste or type your content containing sensitive information.",
+    title: "Protect Your Data",
+    description: "Transform your sensitive information into a secure format.",
   },
   {
     title: "Review Detection",
@@ -282,51 +281,26 @@ export function StepProcessor() {
     );
   };
 
-  const handleCopy = async () => {
-    const confirmCopy = await new Promise<boolean>((resolve) => {
-      setDialogOpen(true);
-      const handleConfirm = (shouldCopy: boolean) => {
-        resolve(shouldCopy);
-        setDialogOpen(false);
-      };
+  const handleCopy = () => {
+    setDialogOpen(true);
+  };
 
-      return (
-        <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>⚠️ Important: Preserve Placeholders</AlertDialogTitle>
-              <AlertDialogDescription>
-                Ensure placeholders remain unchanged when using AI tools. Modifications may prevent re-identification of sensitive data.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => handleConfirm(false)}>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(maskedText);
-                  toast({
-                    title: "✅ Masked text copied successfully!",
-                    description: "The text is ready for external processing.",
-                  });
-                  setCurrentStep(2);
-                } catch (err) {
-                  toast({
-                    title: "❗ Failed to copy",
-                    description: "Please try copying the text manually.",
-                    variant: "destructive",
-                  });
-                }
-                handleConfirm(true);
-              }}>
-                Copy Anyway
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      );
-    });
-
-    if (!confirmCopy) return;
+  const handleConfirmCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(maskedText);
+      toast({
+        title: "✅ Copied successfully",
+        description: "The masked text is ready for external processing.",
+      });
+      setCurrentStep(2);
+    } catch (err) {
+      toast({
+        title: "❗ Failed to copy",
+        description: "Please try copying the text manually.",
+        variant: "destructive",
+      });
+    }
+    setDialogOpen(false);
   };
 
   const handleProceedWithoutCopy = () => {
@@ -484,7 +458,7 @@ export function StepProcessor() {
             <Textarea
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder="Enter text containing sensitive data..."
+              placeholder="Paste your text here... (e.g., emails, phone numbers, addresses)"
               className="min-h-[200px] font-mono text-sm transition-all duration-200"
             />
             <div className="flex justify-between items-center">
@@ -493,8 +467,8 @@ export function StepProcessor() {
                 Reset
               </Button>
               <Button onClick={handleDetectAndMask}>
-                Detect & Mask Sensitive Data
-                <ChevronRight className="ml-2 h-4 w-4" />
+                <EyeOff className="mr-2 h-4 w-4" />
+                Protect Content
               </Button>
             </div>
           </div>
@@ -505,7 +479,7 @@ export function StepProcessor() {
             <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg mb-4">
               <p className="text-sm text-yellow-800 flex items-center">
                 <span className="mr-2">⚠️</span>
-                Ensure placeholders remain unchanged when processing externally. Modifications may prevent successful re-identification.
+                Keep placeholders unchanged when processing externally to ensure data recovery.
               </p>
             </div>
             
