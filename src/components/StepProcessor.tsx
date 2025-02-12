@@ -480,46 +480,7 @@ export function StepProcessor() {
                 </Button>
               </CollapsibleTrigger>
               <CollapsibleContent>
-                <div className="p-4 space-y-4">
-                  <div className="grid gap-2">
-                    {entities.map((entity, idx) => (
-                      <div 
-                        key={idx}
-                        className="flex items-center gap-2 p-2 bg-white/50 rounded-lg hover:bg-white/80 transition-colors"
-                      >
-                        <div className={`px-2 py-1 rounded ${categoryColors[entity.type].bg} ${categoryColors[entity.type].text}`}>
-                          {categoryColors[entity.type].icon}
-                        </div>
-                        <div className="flex-1 grid grid-cols-[1fr,auto,1fr] items-center gap-4">
-                          <code className="p-1.5 bg-muted/50 rounded text-xs">
-                            {entity.placeholder.replace(/[\u200B-\u200D\uFEFF]/g, '')}
-                          </code>
-                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                          <code className="p-1.5 bg-muted/50 rounded text-xs truncate" title={entity.value}>
-                            {entity.value}
-                          </code>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-
-            <Collapsible className="border rounded-lg bg-muted/50">
-              <CollapsibleTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  className="w-full flex justify-between items-center p-4 hover:bg-muted/80"
-                >
-                  <span className="font-medium">
-                    Category Directory
-                  </span>
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className="p-4 space-y-4">
+                <div className="p-4 space-y-6">
                   {Object.entries(
                     entities.reduce((acc, entity) => {
                       if (!acc[entity.type]) {
@@ -529,25 +490,38 @@ export function StepProcessor() {
                       return acc;
                     }, {} as Record<SensitiveDataType, DetectedEntity[]>)
                   ).map(([type, items]) => (
-                    <div key={type} className="space-y-2">
-                      <div className={`flex items-center gap-2 ${categoryColors[type as SensitiveDataType].text} font-medium`}>
-                        <span>{categoryColors[type as SensitiveDataType].icon}</span>
-                        <span className="capitalize">{type} ({items.length})</span>
-                      </div>
-                      <div className="ml-6 grid gap-1">
-                        {items.map((item, idx) => (
-                          <div key={idx} className="flex items-center gap-2 text-sm">
-                            <code className="p-1 bg-muted/50 rounded text-xs">
-                              {item.placeholder.replace(/[\u200B-\u200D\uFEFF]/g, '')}
-                            </code>
-                            <ChevronRight className="h-3 w-3 text-muted-foreground" />
-                            <code className="p-1 bg-muted/50 rounded text-xs truncate" title={item.value}>
-                              {item.value}
-                            </code>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                    <Collapsible key={type}>
+                      <CollapsibleTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          className={`w-full flex items-center gap-2 px-2 py-1.5 hover:bg-white/50 rounded-lg ${categoryColors[type as SensitiveDataType].text}`}
+                        >
+                          <span>{categoryColors[type as SensitiveDataType].icon}</span>
+                          <span className="capitalize font-medium">{type} ({items.length})</span>
+                          <ChevronDown className="h-4 w-4 ml-auto" />
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="mt-2 ml-6 space-y-2">
+                          {items.map((item, idx) => (
+                            <div 
+                              key={idx} 
+                              className="flex items-center gap-2 p-2 bg-white/50 rounded-lg hover:bg-white/80 transition-colors"
+                            >
+                              <div className="flex-1 grid grid-cols-[1fr,auto,1fr] items-center gap-4">
+                                <code className="p-1.5 bg-muted/50 rounded text-xs">
+                                  {item.placeholder.replace(/[\u200B-\u200D\uFEFF]/g, '')}
+                                </code>
+                                <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                                <code className="p-1.5 bg-muted/50 rounded text-xs truncate" title={item.value}>
+                                  {item.value}
+                                </code>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
                   ))}
                 </div>
               </CollapsibleContent>
