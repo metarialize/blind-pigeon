@@ -177,7 +177,7 @@ export function StepProcessor() {
     alteredPlaceholders: [],
     invalidFormatPlaceholders: [],
     recoverable: true,
-    similarPlaceholders: [],
+    similarPlaceholders: []
   });
 
   const handleDetectAndMask = () => {
@@ -380,6 +380,24 @@ export function StepProcessor() {
     });
   };
 
+  const handlePaste = (newText: string) => {
+    setMaskedText(newText);
+    const validation = validatePlaceholdersDetailed(newText, entities);
+    setValidationResult(validation);
+    
+    if (!validation.isValid) {
+      const message = validation.recoverable 
+        ? `${validation.missingPlaceholders.length} placeholders need attention but may be recoverable.`
+        : `${validation.missingPlaceholders.length} placeholders are missing or modified.`;
+        
+      toast({
+        title: "Validation Warning",
+        description: message,
+        variant: "destructive",
+      });
+    }
+  };
+
   const renderMissingDataComparison = (validationResult: ValidationResult) => {
     const missingEntities = entities.filter(entity => 
       validationResult.missingPlaceholders.includes(entity.placeholder)
@@ -558,17 +576,43 @@ export function StepProcessor() {
               <Label className="text-sm font-medium">Paste Modified Text</Label>
               <Textarea
                 value={maskedText}
-                onChange={(e) => {
-                  const newText = e.target.value;
-                  setMaskedText(newText);
-                  setValidationResult(validatePlaceholdersDetailed(newText, entities));
-                }}
+                onChange={(e) => handlePaste(e.target.value)}
                 placeholder="Paste the modified masked text here after processing externally..."
                 className="min-h-[150px] max-h-[150px] font-mono text-sm overflow-y-auto"
               />
             </div>
 
-            {!validationResult.isValid && renderMissingDataComparison(validationResult)}
+            {!validationResult.isValid && (
+              <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg space-y-4">
+                <div>
+                  <h3 className="font-medium text-yellow-800 mb-2">Missing Sensitive Data:</h3>
+                  <div className="space-y-2">
+                    {entities
+                      .filter(entity => validationResult.missingPlaceholders.includes(entity.placeholder))
+                      .map((entity, index) => (
+                        <div key={index} className="flex items-start space-x-2 text-sm">
+                          <span className="font-mono text-yellow-600">{entity.placeholder}</span>
+                          <span className="text-muted-foreground">→</span>
+                          <span className="font-medium text-yellow-900">Original value: {entity.value}</span>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+
+                {validationResult.similarPlaceholders.length > 0 && (
+                  <div>
+                    <h3 className="font-medium text-yellow-800 mb-2">Similar Placeholders Found:</h3>
+                    <div className="space-y-1">
+                      {validationResult.similarPlaceholders.map((placeholder, index) => (
+                        <div key={index} className="text-sm text-yellow-600 font-mono">
+                          {placeholder}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             
             <div className="flex justify-between items-center">
               <div className="space-x-2">
@@ -578,13 +622,10 @@ export function StepProcessor() {
                 </Button>
                 <Button 
                   variant="outline" 
-                  onClick={() => {
-                    setMaskedText(maskedText);
-                    setValidationResult(validatePlaceholdersDetailed(maskedText, entities));
-                  }}
+                  onClick={() => handlePaste(maskedText)}
                 >
                   <RotateCcw className="mr-2 h-4 w-4" />
-                  Reset & Revalidate
+                  Revalidate
                 </Button>
               </div>
               
@@ -597,15 +638,19 @@ export function StepProcessor() {
                       disabled={!maskedText || !validationResult.isValid}
                     >
                       <Eye className="mr-2 h-4 w-4" />
-                      Restore Original Data
+                      {validationResult.recoverable && !validationResult.isValid 
+                        ? "Attempt Recovery" 
+                        : "Restore Original Data"}
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
                     {!maskedText 
                       ? "Please paste the masked text to proceed"
                       : !validationResult.isValid
-                      ? "All placeholders must be intact to restore data"
-                      : "Click to restore the original text"}
+                        ? validationResult.recoverable 
+                          ? "Some issues found but recovery may be possible"
+                          : "All placeholders must be intact to restore data"
+                        : "Click to restore the original text"}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
