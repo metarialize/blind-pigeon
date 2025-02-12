@@ -581,6 +581,45 @@ export function StepProcessor() {
               </CollapsibleContent>
             </Collapsible>
 
+            <Collapsible className="border rounded-lg bg-muted/50">
+              <CollapsibleTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  className="w-full flex justify-between items-center p-4 hover:bg-muted/80"
+                >
+                  <span className="font-medium">
+                    Placeholder Mappings ({entities.length})
+                  </span>
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="p-4 space-y-4">
+                  <div className="grid gap-2">
+                    {entities.map((entity, idx) => (
+                      <div 
+                        key={idx}
+                        className="flex items-center gap-2 p-2 bg-white/50 rounded-lg hover:bg-white/80 transition-colors"
+                      >
+                        <div className={`px-2 py-1 rounded ${categoryColors[entity.type].bg} ${categoryColors[entity.type].text}`}>
+                          {categoryColors[entity.type].icon}
+                        </div>
+                        <div className="flex-1 grid grid-cols-[1fr,auto,1fr] items-center gap-4">
+                          <code className="p-1.5 bg-muted/50 rounded text-xs">
+                            {entity.placeholder.replace(/[\u200B-\u200D\uFEFF]/g, '')}
+                          </code>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                          <code className="p-1.5 bg-muted/50 rounded text-xs truncate" title={entity.value}>
+                            {entity.value}
+                          </code>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+
             <div className="flex justify-between items-center">
               <Button variant="outline" onClick={() => setCurrentStep(0)}>
                 <ChevronLeft className="mr-2 h-4 w-4" />
