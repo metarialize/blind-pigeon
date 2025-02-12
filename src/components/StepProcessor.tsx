@@ -313,7 +313,7 @@ export function StepProcessor() {
     );
   };
 
-  const handleCopy = () => {
+  const handleCopy = async () => {
     if (!maskedText) {
       toast({
         title: "No text to copy",
@@ -322,78 +322,18 @@ export function StepProcessor() {
       });
       return;
     }
-    setDialogOpen(true);
-  };
 
-  const handleConfirmCopy = async () => {
     try {
       await navigator.clipboard.writeText(maskedText);
       toast({
         title: "✅ Text copied successfully!",
-        description: "You can now proceed to the next step.",
+        description: "You can now edit the text externally and paste it back when done.",
       });
-      setCurrentStep(3);
+      setCurrentStep(2);
     } catch (err) {
       toast({
         title: "❗ Failed to copy",
         description: "Please try copying the text manually.",
-        variant: "destructive",
-      });
-    }
-    setDialogOpen(false);
-  };
-
-  const handleProceedWithoutCopy = () => {
-    if (!maskedText) {
-      toast({
-        title: "❗ Action required",
-        description: "Please copy the masked text before proceeding to the next step.",
-        variant: "destructive",
-      });
-      return;
-    }
-    setCurrentStep(3);
-  };
-
-  const handleExport = (format: 'txt' | 'json') => {
-    try {
-      let content = '';
-      let mimeType = '';
-      let fileExtension = '';
-      
-      if (format === 'json') {
-        content = JSON.stringify({
-          maskedText,
-          timestamp: new Date().toISOString(),
-          entityCount: entities.length,
-        }, null, 2);
-        mimeType = 'application/json';
-        fileExtension = 'json';
-      } else {
-        content = maskedText;
-        mimeType = 'text/plain';
-        fileExtension = 'txt';
-      }
-
-      const blob = new Blob([content], { type: mimeType });
-      const url = URL.createObjectURL(blob);
-      const date = new Date().toISOString().split('T')[0].replace(/-/g, '');
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `masked_text_${date}.${fileExtension}`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-
-      toast({
-        title: "File exported successfully",
-        description: `Saved as masked_text_${date}.${fileExtension}`,
-      });
-    } catch (err) {
-      toast({
-        title: "Export failed",
-        description: "There was an error exporting the file.",
         variant: "destructive",
       });
     }
@@ -663,6 +603,68 @@ export function StepProcessor() {
             <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg mb-4">
               <p className="text-sm text-yellow-800 flex items-center">
                 <span className="mr-2">⚠️</span>
+                After editing externally, paste your modified text below. Ensure placeholders remain intact for successful restoration.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Original Masked Text (Reference)</Label>
+              <div className="p-4 bg-muted/50 rounded-lg font-mono text-sm max-h-[100px] overflow-y-auto">
+                {formatPlaceholderDisplay(maskedText, entities)}
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Paste Modified Text</Label>
+              <Textarea
+                value={maskedText}
+                onChange={(e) => {
+                  const newText = e.target.value;
+                  setMaskedText(newText);
+                  setValidationResult(validatePlaceholdersDetailed(newText, entities));
+                }}
+                placeholder="Paste the modified masked text here after processing externally..."
+                className="min-h-[150px] font-mono text-sm"
+              />
+            </div>
+            
+            {renderValidationWarnings()}
+            
+            <div className="flex justify-between items-center">
+              <Button variant="outline" onClick={() => setCurrentStep(1)}>
+                <ChevronLeft className="mr-2 h-4 w-4" />
+                Back
+              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      onClick={() => setCurrentStep(3)}
+                      variant={validationResult.isValid ? "default" : "outline"}
+                      disabled={!maskedText || !validationResult.isValid}
+                    >
+                      <ChevronRight className="mr-2 h-4 w-4" />
+                      Continue to Restore
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {!maskedText 
+                      ? "Please paste the modified text to proceed"
+                      : !validationResult.isValid
+                      ? "All placeholders must be intact to proceed"
+                      : "Click to proceed to restoration"}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          </div>
+        );
+      case 3:
+        return (
+          <div className="space-y-4">
+            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg mb-4">
+              <p className="text-sm text-yellow-800 flex items-center">
+                <span className="mr-2">⚠️</span>
                 Ensure placeholders remain unchanged when processing externally. Modifications may prevent successful re-identification.
               </p>
             </div>
@@ -684,7 +686,7 @@ export function StepProcessor() {
                   setValidationResult(validatePlaceholdersDetailed(newText, entities));
                 }}
                 placeholder="Paste the modified masked text here after processing externally..."
-                className="min-h-[150px] max-h-[150px] font-mono text-sm overflow-y-auto"
+                className="min-h-[150px] font-mono text-sm"
               />
             </div>
             
