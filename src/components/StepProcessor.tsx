@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -11,7 +10,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Eye, EyeOff, Copy, RotateCcw, ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
+import { Eye, EyeOff, Copy, RotateCcw, ChevronLeft, ChevronRight, Plus, X, ChevronDown } from "lucide-react";
 import {
   HoverCard,
   HoverCardTrigger,
@@ -48,6 +47,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 type Step = {
   title: string;
@@ -371,7 +375,7 @@ export function StepProcessor() {
                 variant="outline"
                 size="sm"
                 onClick={() => setShowOriginal(!showOriginal)}
-                className="transition-all duration-200"
+                className="ml-2 transition-all duration-200"
               >
                 {showOriginal ? (
                   <>
@@ -397,36 +401,50 @@ export function StepProcessor() {
                 </div>
               )}
             </div>
-            <div className="p-4 border rounded-lg bg-muted/50">
-              <h3 className="font-medium mb-2">Detected & Masked Items:</h3>
-              {entities.length > 0 ? (
-                <div className="space-y-2">
-                  {getSummaryByCategory(entities).map(({ type, count, icon, text }) => (
-                    <div key={type} className="space-y-1">
-                      <div className={`text-sm font-medium ${text}`}>
-                        {icon} {type} ({count})
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {entities
-                          .filter(e => e.type === type)
-                          .map((entity, idx) => (
-                            <div
-                              key={`${type}-${idx}`}
-                              className={`group px-3 py-1.5 rounded-full text-sm flex items-center gap-2 animate-fade-in ${text} bg-white/50 hover:bg-white/80 transition-colors cursor-pointer`}
-                              onClick={() => handleRemoveEntity(entity.type, entity.value)}
-                            >
-                              <span>{entity.value}</span>
-                              <X className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                            </div>
-                          ))}
-                      </div>
+            <Collapsible className="border rounded-lg bg-muted/50">
+              <CollapsibleTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  className="w-full flex justify-between items-center p-4 hover:bg-muted/80"
+                >
+                  <span className="font-medium">
+                    Detected & Masked Items ({entities.length})
+                  </span>
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="p-4 pt-0">
+                  {entities.length > 0 ? (
+                    <div className="space-y-2">
+                      {getSummaryByCategory(entities).map(({ type, count, icon, text }) => (
+                        <div key={type} className="space-y-1">
+                          <div className={`text-sm font-medium ${text}`}>
+                            {icon} {type} ({count})
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {entities
+                              .filter(e => e.type === type)
+                              .map((entity, idx) => (
+                                <div
+                                  key={`${type}-${idx}`}
+                                  className={`group px-3 py-1.5 rounded-full text-sm flex items-center gap-2 animate-fade-in ${text} bg-white/50 hover:bg-white/80 transition-colors cursor-pointer`}
+                                  onClick={() => handleRemoveEntity(entity.type, entity.value)}
+                                >
+                                  <span>{entity.value}</span>
+                                  <X className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No sensitive data detected</p>
+                  )}
                 </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">No sensitive data detected</p>
-              )}
-            </div>
+              </CollapsibleContent>
+            </Collapsible>
             <div className="flex justify-between items-center">
               <Button variant="outline" onClick={() => setCurrentStep(0)}>
                 <ChevronLeft className="mr-2 h-4 w-4" />
