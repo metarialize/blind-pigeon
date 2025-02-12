@@ -74,12 +74,12 @@ type Step = {
 
 const steps: Step[] = [
   {
-    title: "Protect Your Data",
-    description: "Transform your sensitive information into a secure format.",
+    title: "Process Text",
+    description: "Process your text with advanced pattern recognition.",
   },
   {
     title: "Review Detection",
-    description: "Review automatically detected sensitive data.",
+    description: "Review automatically detected data.",
   },
   {
     title: "Mask & Export",
@@ -243,37 +243,69 @@ export function StepProcessor() {
   };
 
   const renderValidationWarnings = () => {
-    if (validationResult.isValid) return null;
+    if (!maskedText) return null;
 
     return (
-      <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg space-y-4">
-        {validationResult.missingPlaceholders.length > 0 && (
-          <div>
-            <h3 className="font-medium text-yellow-800 mb-2">Missing Placeholders:</h3>
-            <div className="space-y-2">
-              {entities
-                .filter(entity => validationResult.missingPlaceholders.includes(entity.placeholder))
-                .map((entity, index) => (
-                  <div key={index} className="flex items-start space-x-2 text-sm">
-                    <span className="font-mono text-yellow-600">{entity.placeholder}</span>
-                    <span className="text-muted-foreground">→</span>
-                    <span className="font-medium text-yellow-900">Original value: {entity.value}</span>
-                  </div>
-                ))}
-            </div>
-          </div>
-        )}
+      <div className={`p-4 rounded-lg space-y-2 ${
+        validationResult.isValid 
+          ? 'bg-green-50 border border-green-200'
+          : 'bg-yellow-50 border border-yellow-200'
+      }`}>
+        <div className="flex items-center gap-2">
+          <span>{validationResult.isValid ? '✅' : '❗'}</span>
+          <p className={`text-sm font-medium ${
+            validationResult.isValid ? 'text-green-700' : 'text-yellow-700'
+          }`}>
+            {validationResult.isValid 
+              ? "Validation successful! Ready to restore original data."
+              : "Warning: Some placeholders have been altered. Review before proceeding."}
+          </p>
+        </div>
 
-        {validationResult.suggestedFixes.length > 0 && (
-          <div>
-            <h3 className="font-medium text-yellow-800 mb-2">Suggested Fixes:</h3>
-            <div className="space-y-2">
-              {validationResult.suggestedFixes.map((fix, index) => (
-                <div key={index} className="text-sm space-y-1">
-                  <div className="font-mono text-yellow-600">Found: {fix.modified}</div>
-                  <div className="font-mono text-green-600">Should be: {fix.original}</div>
+        {!validationResult.isValid && (
+          <div className="pl-6 space-y-2">
+            {validationResult.missingPlaceholders.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-yellow-700">Missing Placeholders:</p>
+                <div className="space-y-2">
+                  {validationResult.missingPlaceholders.map((placeholder, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <Input 
+                        placeholder={`Enter value for ${placeholder}`}
+                        className="text-sm font-mono bg-white/50"
+                        onChange={(e) => {
+                          const newText = maskedText.replace(
+                            new RegExp(placeholder, 'g'),
+                            e.target.value
+                          );
+                          setMaskedText(newText);
+                        }}
+                      />
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          setValidationResult(validatePlaceholdersDetailed(maskedText, entities));
+                        }}
+                      >
+                        Verify
+                      </Button>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
+            )}
+            
+            <div className="flex justify-end">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setValidationResult(validatePlaceholdersDetailed(maskedText, entities));
+                }}
+              >
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Reset & Revalidate
+              </Button>
             </div>
           </div>
         )}
@@ -458,7 +490,7 @@ export function StepProcessor() {
             <Textarea
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder="Paste your text here... (e.g., emails, phone numbers, addresses)"
+              placeholder="Paste your text here for advanced pattern recognition..."
               className="min-h-[200px] font-mono text-sm transition-all duration-200"
             />
             <div className="flex justify-between items-center">
@@ -467,8 +499,8 @@ export function StepProcessor() {
                 Reset
               </Button>
               <Button onClick={handleDetectAndMask}>
-                <EyeOff className="mr-2 h-4 w-4" />
-                Protect Content
+                <Eye className="mr-2 h-4 w-4" />
+                Analyze
               </Button>
             </div>
           </div>
