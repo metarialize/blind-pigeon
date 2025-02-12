@@ -429,21 +429,46 @@ export function StepProcessor() {
     });
   };
 
+  const renderProgress = () => {
+    return (
+      <div className="flex items-center justify-between mb-6">
+        {steps.map((step, idx) => (
+          <div 
+            key={idx}
+            className={`flex-1 ${idx !== steps.length - 1 ? 'mr-2' : ''}`}
+          >
+            <div className="flex items-center">
+              <div 
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                  idx <= currentStep 
+                    ? 'bg-primary text-primary-foreground' 
+                    : 'bg-muted text-muted-foreground'
+                }`}
+              >
+                {idx + 1}
+              </div>
+              {idx !== steps.length - 1 && (
+                <div className="flex-1 h-0.5 mx-2 bg-muted">
+                  <div 
+                    className="h-full bg-primary transition-all duration-300"
+                    style={{ width: idx < currentStep ? '100%' : '0%' }}
+                  />
+                </div>
+              )}
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              {steps[idx].title}
+            </p>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   const renderStepContent = (step: number) => {
     return (
       <div className="space-y-6">
-        <div className="space-y-2">
-          <div className="flex justify-between items-center text-sm text-muted-foreground">
-            <span>{steps[currentStep].title}</span>
-            <span>{steps[currentStep].description}</span>
-          </div>
-          <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-            <div 
-              className="h-full bg-primary transition-all duration-300 rounded-full"
-              style={{ width: `${((currentStep + 1) / steps.length) * 100}%` }}
-            />
-          </div>
-        </div>
+        {renderProgress()}
 
         {(() => {
           switch (step) {
