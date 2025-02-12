@@ -118,10 +118,10 @@ export function StepProcessor() {
   const [inputText, setInputText] = useState("");
   const [maskedText, setMaskedText] = useState("");
   const [entities, setEntities] = useState<DetectedEntity[]>([]);
-  const [isMasked, setIsMasked] = useState(false);
+  const [showOriginal, setShowOriginal] = useState(true);
   const { toast } = useToast();
 
-  const handleDetect = () => {
+  const handleDetectAndMask = () => {
     if (!inputText) {
       toast({
         title: "No text to process",
@@ -132,32 +132,42 @@ export function StepProcessor() {
     }
 
     const detected = detectSensitiveData(inputText);
-    setEntities(detected);
-    
-    toast({
-      title: "Detection complete",
-      description: `Found ${detected.length} sensitive items.`,
-    });
-  };
-
-  const handleMask = () => {
-    if (entities.length === 0) {
+    if (detected.length === 0) {
       toast({
-        title: "No sensitive data",
-        description: "No sensitive data was detected to mask.",
+        title: "No sensitive data found",
+        description: "No sensitive data was detected in the provided text.",
         variant: "destructive",
       });
       return;
     }
 
-    const masked = maskText(inputText, entities);
+    setEntities(detected);
+    const masked = maskText(inputText, detected);
     setMaskedText(masked);
-    setIsMasked(true);
-
+    setShowOriginal(false);
+    setCurrentStep(1);
+    
     toast({
-      title: "Text masked successfully",
-      description: `${entities.length} sensitive items were masked.`,
+      title: "Sensitive data masked",
+      description: `${detected.length} items were detected and masked.`,
     });
+  };
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(maskedText);
+      toast({
+        title: "Copied to clipboard",
+        description: "The masked text has been copied to your clipboard.",
+      });
+      setCurrentStep(2);
+    } catch (err) {
+      toast({
+        title: "Failed to copy",
+        description: "Please try copying the text manually.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleRestore = () => {
@@ -181,7 +191,7 @@ export function StepProcessor() {
 
     const restored = restoreText(maskedText, entities);
     setInputText(restored);
-    setIsMasked(false);
+    setShowOriginal(true);
     
     toast({
       title: "Text restored successfully",
@@ -189,27 +199,11 @@ export function StepProcessor() {
     });
   };
 
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(maskedText);
-      toast({
-        title: "Copied to clipboard",
-        description: "The masked text has been copied to your clipboard.",
-      });
-    } catch (err) {
-      toast({
-        title: "Failed to copy",
-        description: "Please try copying the text manually.",
-        variant: "destructive",
-      });
-    }
-  };
-
   const handleReset = () => {
     setInputText("");
     setMaskedText("");
     setEntities([]);
-    setIsMasked(false);
+    setShowOriginal(true);
     setCurrentStep(0);
     toast({
       title: "Reset successful",
@@ -226,15 +220,15 @@ export function StepProcessor() {
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               placeholder="Enter text containing sensitive data..."
-              className="min-h-[200px] font-mono text-sm"
+              className="min-h-[200px] font-mono text-sm transition-all duration-200"
             />
             <div className="flex justify-between items-center">
               <Button variant="outline" onClick={handleReset}>
                 <RotateCcw className="mr-2 h-4 w-4" />
                 Reset
               </Button>
-              <Button onClick={handleDetect}>
-                Detect Sensitive Data
+              <Button onClick={handleDetectAndMask}>
+                Detect & Mask Sensitive Data
                 <ChevronRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
@@ -243,12 +237,43 @@ export function StepProcessor() {
       case 1:
         return (
           <div className="space-y-4">
+            <div className="flex justify-end mb-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowOriginal(!showOriginal)}
+                className="transition-all duration-200"
+              >
+                {showOriginal ? (
+                  <>
+                    <EyeOff className="mr-2 h-4 w-4" />
+                    Show Masked
+                  </>
+                ) : (
+                  <>
+                    <Eye className="mr-2 h-4 w-4" />
+                    Show Original
+                  </>
+                )}
+              </Button>
+            </div>
+            <div className="p-4 border rounded-lg bg-white font-mono text-sm whitespace-pre-wrap transition-all duration-300">
+              {showOriginal ? (
+                <div className="animate-fade-in">
+                  {inputText}
+                </div>
+              ) : (
+                <div className="animate-fade-in">
+                  {formatPlaceholderDisplay(maskedText, entities)}
+                </div>
+              )}
+            </div>
             <div className="p-4 border rounded-lg bg-muted/50">
-              <h3 className="font-medium mb-2">Detected Items:</h3>
+              <h3 className="font-medium mb-2">Detected & Masked Items:</h3>
               {entities.length > 0 ? (
                 <ul className="space-y-2">
                   {entities.map((entity, idx) => (
-                    <li key={idx} className="text-sm">
+                    <li key={idx} className="text-sm animate-fade-in" style={{ animationDelay: `${idx * 100}ms` }}>
                       <span className={`${categoryColors[entity.type]?.text || ""}`}>
                         {categoryColors[entity.type]?.icon} {entity.type}:
                       </span>{" "}
@@ -267,24 +292,6 @@ export function StepProcessor() {
                 <ChevronLeft className="mr-2 h-4 w-4" />
                 Back
               </Button>
-              <Button onClick={handleMask}>
-                Mask Data
-                <ChevronRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        );
-      case 2:
-        return (
-          <div className="space-y-4">
-            <div className="p-4 border rounded-lg bg-white font-mono text-sm whitespace-pre-wrap">
-              {formatPlaceholderDisplay(maskedText, entities)}
-            </div>
-            <div className="flex justify-between items-center">
-              <Button variant="outline" onClick={() => setCurrentStep(1)}>
-                <ChevronLeft className="mr-2 h-4 w-4" />
-                Back
-              </Button>
               <Button onClick={handleCopy}>
                 <Copy className="mr-2 h-4 w-4" />
                 Copy Masked Text
@@ -292,7 +299,7 @@ export function StepProcessor() {
             </div>
           </div>
         );
-      case 3:
+      case 2:
         return (
           <div className="space-y-4">
             <Textarea
@@ -302,7 +309,7 @@ export function StepProcessor() {
               className="min-h-[200px] font-mono text-sm"
             />
             <div className="flex justify-between items-center">
-              <Button variant="outline" onClick={() => setCurrentStep(2)}>
+              <Button variant="outline" onClick={() => setCurrentStep(1)}>
                 <ChevronLeft className="mr-2 h-4 w-4" />
                 Back
               </Button>
