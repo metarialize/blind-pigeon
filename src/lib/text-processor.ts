@@ -1,7 +1,7 @@
 
 type SensitiveDataType = 'name' | 'email' | 'phone' | 'address' | 'ssn' | 'dob';
 
-interface DetectedEntity {
+export interface DetectedEntity {
   type: SensitiveDataType;
   value: string;
   placeholder: string;
