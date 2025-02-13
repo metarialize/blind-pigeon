@@ -1,5 +1,5 @@
 
-export type SensitiveDataType = 'name' | 'email' | 'phone' | 'address' | 'ssn' | 'dob' | 'account' | 'custom';
+export type SensitiveDataType = 'name' | 'email' | 'phone' | 'address' | 'ssn' | 'dob' | 'account' | 'location' | 'custom';
 
 export type Step = {
   title: string;

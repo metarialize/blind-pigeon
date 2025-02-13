@@ -18,6 +18,8 @@ import {
   HoverCardContent,
 } from "@/components/ui/hover-card";
 import { categoryColors } from "@/constants/step-processor";
+import { Copy } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export function StepProcessor() {
   const [currentStep, setCurrentStep] = useState(0);
@@ -95,6 +97,7 @@ export function StepProcessor() {
         title: "No text to copy",
         description: steps[2].validationMessage.error,
         variant: "destructive",
+        duration: 3000,
       });
       return;
     }
@@ -105,13 +108,15 @@ export function StepProcessor() {
       toast({
         title: "✅ Text copied successfully!",
         description: steps[2].validationMessage.success,
+        duration: 3000,
       });
-      handleNext();
+      setCurrentStep(prev => prev + 1);
     } catch (err) {
       toast({
         title: "❗ Failed to copy",
         description: steps[2].validationMessage.error,
         variant: "destructive",
+        duration: 3000,
       });
     }
   };
@@ -169,12 +174,31 @@ export function StepProcessor() {
               {category.icon} {entity.substitute}
             </span>
           </HoverCardTrigger>
-          <HoverCardContent className="w-fit p-2">
-            <div className="text-sm">
-              <div className="font-semibold mb-1">{entity.type.toUpperCase()}</div>
-              <code className="px-2 py-1 bg-muted rounded text-xs">
-                {entity.value}
-              </code>
+          <HoverCardContent className="w-fit p-3 space-y-2">
+            <div className="text-sm space-y-1.5">
+              <div className="font-semibold">{entity.type.toUpperCase()}</div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Original:</span>
+                <div className="flex items-center gap-1.5">
+                  <code className="px-2 py-1 bg-muted rounded text-xs">
+                    {entity.value}
+                  </code>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0"
+                    onClick={() => {
+                      navigator.clipboard.writeText(entity.value);
+                      toast({
+                        title: "Copied to clipboard",
+                        duration: 2000,
+                      });
+                    }}
+                  >
+                    <Copy className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
             </div>
           </HoverCardContent>
         </HoverCard>
