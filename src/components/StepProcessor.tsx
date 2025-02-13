@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
@@ -249,7 +250,7 @@ export function StepProcessor() {
     <div className="w-full max-w-4xl mx-auto space-y-6">
       <Card 
         className="p-6 backdrop-blur-sm bg-white/90 shadow-lg transition-all duration-300"
-        {...bind().bind}
+        {...bind.bind}
       >
         <div className="space-y-6">
           <StepIndicator
