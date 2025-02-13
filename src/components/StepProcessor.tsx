@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
@@ -69,16 +68,24 @@ export function StepProcessor() {
     return 'success';
   };
 
-  // Handler for swipe gestures on mobile
-  const bind = useGesture({
-    onDrag: ({ swipe: [swipeX] }) => {
-      if (swipeX < 0 && currentStep < steps.length - 1) {
-        handleNext();
-      } else if (swipeX > 0 && currentStep > 0) {
-        handleBack();
-      }
+  const bind = useGesture(
+    {
+      onDrag: ({ swipe: [swipeX] }) => {
+        if (swipeX < 0 && currentStep < steps.length - 1) {
+          handleNext();
+        } else if (swipeX > 0 && currentStep > 0) {
+          handleBack();
+        }
+      },
     },
-  });
+    {
+      drag: {
+        from: [0, 0],
+        filterTaps: true,
+        threshold: 10,
+      },
+    }
+  );
 
   const handleDetectAndMask = () => {
     if (!inputText) {
@@ -242,7 +249,7 @@ export function StepProcessor() {
     <div className="w-full max-w-4xl mx-auto space-y-6">
       <Card 
         className="p-6 backdrop-blur-sm bg-white/90 shadow-lg transition-all duration-300"
-        {...bind()}
+        {...bind().bind}
       >
         <div className="space-y-6">
           <StepIndicator
