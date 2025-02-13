@@ -1,3 +1,4 @@
+<lov-code>
 import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -184,6 +185,8 @@ export function StepProcessor() {
     custom: false
   });
   const { toast } = useToast();
+  const [editStates, setEditStates] = useState<Record<string, boolean>>({});
+  const [editValues, setEditValues] = useState<Record<string, string>>({});
 
   const [validationResult, setValidationResult] = useState<ValidationResult>({
     isValid: true,
@@ -553,7 +556,7 @@ export function StepProcessor() {
                           )}
                         </Button>
                       </div>
-                      <div className="font-mono text-sm whitespace-pre-wrap max-h-[200px] overflow-y-auto scrollbar-hide">
+                      <div className="font-mono text-sm whitespace-pre-wrap max-h-[200px] overflow-y-auto">
                         {showOriginal ? (
                           <div className="animate-fade-in">
                             {inputText}
@@ -581,78 +584,27 @@ export function StepProcessor() {
                       </CollapsibleTrigger>
                       <CollapsibleContent>
                         <div className="p-4 space-y-4">
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button 
-                                variant="outline" 
-                                className="w-full border-dashed"
-                              >
-                                <Plus className="h-4 w-4 mr-2" />
-                                Add Custom Redaction
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                              <DialogHeader>
-                                <DialogTitle>Add Custom Redaction</DialogTitle>
-                                <DialogDescription>
-                                  Enter the text you want to redact and select its category.
-                                </DialogDescription>
-                              </DialogHeader>
-                              <div className="space-y-4">
-                                <div className="space-y-2">
-                                  <Label>Text to Redact</Label>
-                                  <Input
-                                    value={manualValue}
-                                    onChange={(e) => setManualValue(e.target.value)}
-                                    placeholder="Enter text to redact..."
-                                  />
+                          {Object.entries(
+                            entities.reduce((acc, entity) => {
+                              if (!acc[entity.type]) {
+                                acc[entity.type] = [];
+                              }
+                              acc[entity.type].push(entity);
+                              return acc;
+                            }, {} as Record<SensitiveDataType, DetectedEntity[]>)
+                          ).map(([type, items]) => (
+                            <Collapsible key={type}>
+                              <CollapsibleTrigger className="w-full">
+                                <div className={`flex items-center justify-between w-full px-3 py-2 rounded-lg ${categoryColors[type as SensitiveDataType].bg} ${categoryColors[type as SensitiveDataType].text}`}>
+                                  <div className="flex items-center gap-2">
+                                    <span>{categoryColors[type as SensitiveDataType].icon}</span>
+                                    <span className="capitalize font-medium">{type} ({items.length})</span>
+                                  </div>
+                                  <ChevronDown className="h-4 w-4" />
                                 </div>
-                                <div className="space-y-2">
-                                  <Label>Category</Label>
-                                  <Select
-                                    value={manualType}
-                                    onValueChange={(value) => setManualType(value as SensitiveDataType | "custom")}
-                                  >
-                                    <SelectTrigger>
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {Object.keys(categoryColors).map((type) => (
-                                        <SelectItem key={type} value={type}>
-                                          <div className="flex items-center gap-2">
-                                            <span>{categoryColors[type as SensitiveDataType].icon}</span>
-                                            <span className="capitalize">{type}</span>
-                                          </div>
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                              </div>
-                              <DialogFooter>
-                                <Button onClick={handleAddManualEntity}>
-                                  Add Entry
-                                </Button>
-                              </DialogFooter>
-                            </DialogContent>
-                          </Dialog>
-
-                          <div className="space-y-2">
-                            {Object.entries(
-                              entities.reduce((acc, entity) => {
-                                if (!acc[entity.type]) {
-                                  acc[entity.type] = [];
-                                }
-                                acc[entity.type].push(entity);
-                                return acc;
-                              }, {} as Record<SensitiveDataType, DetectedEntity[]>)
-                            ).map(([type, items]) => (
-                              <div key={type} className="space-y-2">
-                                <div className={`flex items-center gap-2 px-2 py-1.5 ${categoryColors[type as SensitiveDataType].text}`}>
-                                  <span>{categoryColors[type as SensitiveDataType].icon}</span>
-                                  <span className="capitalize font-medium">{type} ({items.length})</span>
-                                </div>
-                                <div className="ml-6 space-y-2">
+                              </CollapsibleTrigger>
+                              <CollapsibleContent>
+                                <div className="ml-6 mt-2 space-y-2">
                                   {items.map((item, idx) => (
                                     <div 
                                       key={idx} 
@@ -668,25 +620,84 @@ export function StepProcessor() {
                                         <ChevronRight className="h-3 w-3 text-muted-foreground" />
                                         <div className="flex flex-col space-y-1">
                                           <span className="text-xs text-muted-foreground">Replacement</span>
-                                          <code className="p-1.5 bg-muted/50 rounded text-xs">
-                                            {item.substitute.replace(/[\u200B-\u200D\uFEFF]/g, '')}
-                                          </code>
+                                          {editStates[item.value] ? (
+                                            <Input
+                                              size="sm"
+                                              value={editValues[item.value] || item.substitute}
+                                              onChange={(e) => setEditValues(prev => ({ ...prev, [item.value]: e.target.value }))}
+                                              className="h-8 text-xs"
+                                            />
+                                          ) : (
+                                            <code className="p-1.5 bg-muted/50 rounded text-xs">
+                                              {item.substitute.replace(/[\u200B-\u200D\uFEFF]/g, '')}
+                                            </code>
+                                          )}
                                         </div>
                                       </div>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleRemoveEntity(item.type, item.value)}
-                                        className="opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive"
-                                      >
-                                        <X className="h-4 w-4" />
-                                      </Button>
+                                      <div className="flex items-center gap-1">
+                                        {editStates[item.value] ? (
+                                          <>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              onClick={() => {
+                                                setEditStates(prev => ({ ...prev, [item.value]: false }));
+                                                setEditValues(prev => ({ ...prev, [item.value]: item.substitute }));
+                                              }}
+                                              className="h-7 w-7"
+                                            >
+                                              <X className="h-3 w-3" />
+                                            </Button>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              onClick={() => {
+                                                const newValue = editValues[item.value];
+                                                if (newValue && newValue !== item.substitute) {
+                                                  updateMapping(item.value, newValue);
+                                                  onUpdate();
+                                                  toast({
+                                                    title: "Substitution updated",
+                                                    description: `Updated replacement for "${item.value}"`,
+                                                  });
+                                                }
+                                                setEditStates(prev => ({ ...prev, [item.value]: false }));
+                                              }}
+                                              className="h-7 w-7"
+                                            >
+                                              <Check className="h-3 w-3" />
+                                            </Button>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              onClick={() => {
+                                                setEditStates(prev => ({ ...prev, [item.value]: true }));
+                                                setEditValues(prev => ({ ...prev, [item.value]: item.substitute }));
+                                              }}
+                                              className="h-7 w-7"
+                                            >
+                                              <Edit2 className="h-3 w-3" />
+                                            </Button>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              onClick={() => handleRemoveEntity(item.type, item.value)}
+                                              className="h-7 w-7 opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive"
+                                            >
+                                              <X className="h-3 w-3" />
+                                            </Button>
+                                          </>
+                                        )}
+                                      </div>
                                     </div>
                                   ))}
                                 </div>
-                              </div>
-                            ))}
-                          </div>
+                              </CollapsibleContent>
+                            </Collapsible>
+                          ))}
                         </div>
                       </CollapsibleContent>
                     </Collapsible>
@@ -839,104 +850,4 @@ export function StepProcessor() {
                             {validationResult.invalidFormatPlaceholders.length > 0 && (
                               <div className="text-sm text-yellow-700">
                                 <p className="font-medium">Invalid Format Placeholders:</p>
-                                <ul className="list-disc pl-4 pt-1 space-y-1">
-                                  {validationResult.invalidFormatPlaceholders.map((placeholder, idx) => (
-                                    <li key={idx} className="font-mono text-xs">{placeholder}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    
-                    <div className="flex justify-between items-center">
-                      <div className="space-x-2">
-                        <Button variant="outline" onClick={() => setCurrentStep(1)}>
-                          <ChevronLeft className="mr-2 h-4 w-4" />
-                          Back
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          onClick={() => {
-                            setMaskedText(maskedText);
-                            setValidationResult(validatePlaceholdersDetailed(maskedText, entities));
-                          }}
-                        >
-                          <RotateCcw className="mr-2 h-4 w-4" />
-                          Reset & Revalidate
-                        </Button>
-                      </div>
-                      
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button 
-                              onClick={handleRestore}
-                              variant={validationResult.isValid ? "default" : "outline"}
-                              disabled={!maskedText || !validationResult.isValid}
-                            >
-                              <Eye className="mr-2 h-4 w-4" />
-                              Restore Original Data
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            {!maskedText 
-                              ? "Please paste the masked text to proceed"
-                              : !validationResult.isValid
-                              ? "All placeholders must be intact to restore data"
-                              : "Click to restore the original text"}
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
-                  </div>
-                );
-
-              case 4:
-                return (
-                  <div className="space-y-6 animate-fade-in">
-                    <div className="p-6 rounded-lg bg-white shadow-sm border space-y-4">
-                      <div className="flex items-center justify-center mb-4">
-                        <Shield className="h-12 w-12 text-primary" />
-                      </div>
-                      <h3 className="text-xl font-semibold text-center">
-                        Text Successfully Restored!
-                      </h3>
-                      <p className="text-center text-muted-foreground">
-                        Your text has been fully restored. You can now copy or download it.
-                      </p>
-                      <div className="flex justify-center gap-4 mt-4">
-                        <Button variant="outline" onClick={handleReset}>
-                          <RotateCcw className="mr-2 h-4 w-4" />
-                          Start Over
-                        </Button>
-                        <Button onClick={() => {/* Add download handler */}}>
-                          <Download className="mr-2 h-4 w-4" />
-                          Download Text
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                );
-
-              default:
-                return null;
-            }
-          })()}
-        </div>
-      </div>
-    );
-  };
-
-  return (
-    <div className="w-full max-w-4xl mx-auto space-y-6">
-      <Card className="p-6 backdrop-blur-sm bg-white/90 shadow-lg">
-        {renderStepContent()}
-      </Card>
-    </div>
-  );
-}
-
-export default StepProcessor;
+                                <ul className="
