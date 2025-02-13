@@ -190,7 +190,9 @@ export function StepProcessor() {
     alteredPlaceholders: [],
     invalidFormatPlaceholders: [],
     recoverable: true,
-    suggestedFixes: []
+    suggestedFixes: [],
+    duplicateSubstitutes: [],
+    inconsistentMappings: []
   });
 
   const handleDetectAndMask = () => {
