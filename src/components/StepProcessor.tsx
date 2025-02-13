@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
@@ -18,8 +19,18 @@ import {
   HoverCardContent,
 } from "@/components/ui/hover-card";
 import { categoryColors } from "@/constants/step-processor";
-import { Copy } from "lucide-react";
+import { Copy, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useGesture } from "@use-gesture/react";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
 
 export function StepProcessor() {
   const [currentStep, setCurrentStep] = useState(0);
@@ -29,6 +40,7 @@ export function StepProcessor() {
   const [showOriginal, setShowOriginal] = useState(true);
   const [allItemsReviewed, setAllItemsReviewed] = useState(false);
   const [textCopied, setTextCopied] = useState(false);
+  const [showValidationDialog, setShowValidationDialog] = useState(false);
   const { toast } = useToast();
 
   const [validationResult, setValidationResult] = useState(() =>
@@ -40,7 +52,7 @@ export function StepProcessor() {
       case 0:
         return inputText.trim().length > 0;
       case 1:
-        return allItemsReviewed && entities.length > 0;
+        return entities.length > 0;
       case 2:
         return textCopied && maskedText.length > 0;
       case 3:
@@ -57,12 +69,24 @@ export function StepProcessor() {
     return 'success';
   };
 
+  // Handler for swipe gestures on mobile
+  const bind = useGesture({
+    onDrag: ({ swipe: [swipeX] }) => {
+      if (swipeX < 0 && currentStep < steps.length - 1) {
+        handleNext();
+      } else if (swipeX > 0 && currentStep > 0) {
+        handleBack();
+      }
+    },
+  });
+
   const handleDetectAndMask = () => {
     if (!inputText) {
       toast({
         title: "No text to process",
         description: "Please enter some text to detect sensitive data.",
         variant: "destructive",
+        duration: 3000,
       });
       return;
     }
@@ -73,6 +97,7 @@ export function StepProcessor() {
         title: "No sensitive data found",
         description: "No sensitive data was detected in the text.",
         variant: "destructive",
+        duration: 3000,
       });
       return;
     }
@@ -88,6 +113,7 @@ export function StepProcessor() {
     toast({
       title: "Sensitive data masked",
       description: `${detected.length} items were automatically detected and masked.`,
+      duration: 3000,
     });
   };
 
@@ -125,11 +151,7 @@ export function StepProcessor() {
     if (isStepValid(currentStep)) {
       setCurrentStep(prev => prev + 1);
     } else {
-      toast({
-        title: "Action Required",
-        description: steps[currentStep].validationMessage.warning,
-        variant: "destructive",
-      });
+      setShowValidationDialog(true);
     }
   };
 
@@ -218,7 +240,10 @@ export function StepProcessor() {
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6">
-      <Card className="p-6 backdrop-blur-sm bg-white/90 shadow-lg">
+      <Card 
+        className="p-6 backdrop-blur-sm bg-white/90 shadow-lg transition-all duration-300"
+        {...bind()}
+      >
         <div className="space-y-6">
           <StepIndicator
             currentStep={currentStep}
@@ -243,6 +268,23 @@ export function StepProcessor() {
           />
         </div>
       </Card>
+
+      <AlertDialog open={showValidationDialog} onOpenChange={setShowValidationDialog}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-yellow-500" />
+              Action Required
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {steps[currentStep].validationMessage.warning}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Got it</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
