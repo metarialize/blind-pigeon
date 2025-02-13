@@ -91,7 +91,7 @@ const steps: Step[] = [
   },
 ];
 
-const categoryColors: Record<SensitiveDataType, { bg: string; text: string; icon: string }> = {
+const categoryColors: Record<SensitiveDataType | 'custom', { bg: string; text: string; icon: string }> = {
   name: { bg: "bg-purple-100", text: "text-purple-700", icon: "🔵" },
   email: { bg: "bg-orange-100", text: "text-orange-700", icon: "🟠" },
   phone: { bg: "bg-blue-100", text: "text-blue-700", icon: "🟢" },
@@ -99,6 +99,7 @@ const categoryColors: Record<SensitiveDataType, { bg: string; text: string; icon
   dob: { bg: "bg-red-100", text: "text-red-700", icon: "🔴" },
   ssn: { bg: "bg-gray-100", text: "text-gray-700", icon: "⚪" },
   account: { bg: "bg-green-100", text: "text-green-700", icon: "🟣" },
+  custom: { bg: "bg-pink-100", text: "text-pink-700", icon: "💫" },
 };
 
 const formatPlaceholderDisplay = (text: string, entities: DetectedEntity[]): JSX.Element => {
@@ -106,7 +107,6 @@ const formatPlaceholderDisplay = (text: string, entities: DetectedEntity[]): JSX
   const elements: JSX.Element[] = [];
   
   entities.forEach((entity, idx) => {
-    // Add text before the placeholder
     if (lastIndex < entity.index) {
       elements.push(
         <span key={`text-${idx}`}>
@@ -115,15 +115,14 @@ const formatPlaceholderDisplay = (text: string, entities: DetectedEntity[]): JSX
       );
     }
     
-    // Add the styled placeholder with hover/click reveal
-    const category = categoryColors[entity.type] || categoryColors.name;
+    const category = categoryColors[entity.type] || categoryColors.custom;
     elements.push(
-      <HoverCard key={`placeholder-${idx}`}>
+      <HoverCard key={`substitute-${idx}`}>
         <HoverCardTrigger asChild>
           <span
             className={`px-1.5 py-0.5 rounded cursor-help transition-colors ${category.bg} ${category.text} hover:opacity-90`}
           >
-            {category.icon} {entity.placeholder}
+            {category.icon} {entity.substitute}
           </span>
         </HoverCardTrigger>
         <HoverCardContent className="w-fit p-2">
@@ -137,10 +136,9 @@ const formatPlaceholderDisplay = (text: string, entities: DetectedEntity[]): JSX
       </HoverCard>
     );
     
-    lastIndex = entity.index + entity.placeholder.length;
+    lastIndex = entity.index + entity.value.length;
   });
   
-  // Add remaining text after last placeholder
   if (lastIndex < text.length) {
     elements.push(
       <span key="text-end">{text.slice(lastIndex)}</span>
@@ -393,7 +391,7 @@ export function StepProcessor() {
     const newEntity: DetectedEntity = {
       type: manualType,
       value: manualValue,
-      placeholder: generatePlaceholder(manualType, entities.length),
+      substitute: generatePlaceholder(manualType, entities.length),
       index: inputText.indexOf(manualValue),
     };
 
@@ -653,7 +651,7 @@ export function StepProcessor() {
                                     >
                                       <div className="flex-1 grid grid-cols-[1fr,auto,1fr] items-center gap-4">
                                         <code className="p-1.5 bg-muted/50 rounded text-xs">
-                                          {item.placeholder.replace(/[\u200B-\u200D\uFEFF]/g, '')}
+                                          {item.substitute.replace(/[\u200B-\u200D\uFEFF]/g, '')}
                                         </code>
                                         <ChevronRight className="h-3 w-3 text-muted-foreground" />
                                         <code className="p-1.5 bg-muted/50 rounded text-xs truncate" title={item.value}>

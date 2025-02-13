@@ -1,10 +1,9 @@
-
 export type SensitiveDataType = 'name' | 'email' | 'phone' | 'address' | 'ssn' | 'dob' | 'account';
 
 export interface DetectedEntity {
   type: SensitiveDataType;
   value: string;
-  placeholder: string;
+  substitute: string;
   index: number;
 }
 
@@ -17,10 +16,8 @@ export interface ValidationResult {
   suggestedFixes: { original: string; modified: string; }[];
 }
 
-// Zero-width characters for placeholder protection
 const ZERO_WIDTH_SPACE = '\u200C';
 
-// Bracket styles for different types to increase AI resistance
 const BRACKET_STYLES: Record<SensitiveDataType, { open: string; close: string }> = {
   name: { open: '{', close: '}' },
   email: { open: '⟦', close: '⟧' },
@@ -31,7 +28,6 @@ const BRACKET_STYLES: Record<SensitiveDataType, { open: string; close: string }>
   account: { open: '❴', close: '❵' },
 };
 
-// Calculate Levenshtein distance for fuzzy matching
 const levenshteinDistance = (a: string, b: string): number => {
   if (a.length === 0) return b.length;
   if (b.length === 0) return a.length;
@@ -55,13 +51,10 @@ const levenshteinDistance = (a: string, b: string): number => {
   return matrix[b.length][a.length];
 };
 
-// Function to find similar placeholders
 const findSimilarPlaceholder = (text: string, original: string): string | null => {
-  // Remove zero-width spaces for comparison
   const cleanText = text.replace(new RegExp(ZERO_WIDTH_SPACE, 'g'), '');
   const cleanOriginal = original.replace(new RegExp(ZERO_WIDTH_SPACE, 'g'), '');
   
-  // Split text into potential placeholders
   const potentialPlaceholders = cleanText.match(/[{⟦⟪⟬❲⟨❴][^}⟧⟫⟭❳⟩❵]+[}⟧⟫⟭❳⟩❵]/g) || [];
   
   let bestMatch: string | null = null;
@@ -78,183 +71,73 @@ const findSimilarPlaceholder = (text: string, original: string): string | null =
   return bestMatch;
 };
 
-export const generatePlaceholder = (type: SensitiveDataType, index: number): string => {
+const getRandomSubstitute = (type: SensitiveDataType, usedValues: Set<string>): string => {
   const { open, close } = BRACKET_STYLES[type];
-  const placeholder = `${open}UID:${type.toUpperCase()}:${index.toString().padStart(6, '0')}${close}`;
+  const placeholder = `${open}UID:${type.toUpperCase()}:${usedValues.size.toString().padStart(6, '0')}${close}`;
   return `${ZERO_WIDTH_SPACE}${placeholder}${ZERO_WIDTH_SPACE}`;
+};
+
+export const generateSubstitute = (type: SensitiveDataType, value: string, usedSubstitutes: Map<string, string>): string => {
+  if (usedSubstitutes.has(value)) {
+    return usedSubstitutes.get(value)!;
+  }
+
+  const usedValues = new Set(usedSubstitutes.values());
+  const substitute = getRandomSubstitute(type, usedValues);
+  usedSubstitutes.set(value, substitute);
+  return substitute;
 };
 
 export const detectSensitiveData = (text: string): DetectedEntity[] => {
   const entities: DetectedEntity[] = [];
+  const usedSubstitutes = new Map<string, string>();
   let index = 0;
-  const seenValues = new Map<string, string>(); // Track repeated values
 
-  // Name detection (basic patterns)
   const nameRegex = /\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+\b/g;
   let match;
   while ((match = nameRegex.exec(text)) !== null) {
     const value = match[0];
-    if (seenValues.has(value)) {
-      entities.push({
-        type: 'name',
-        value,
-        placeholder: seenValues.get(value)!,
-        index: match.index,
-      });
-    } else {
-      const placeholder = generatePlaceholder('name', index++);
-      seenValues.set(value, placeholder);
-      entities.push({
-        type: 'name',
-        value,
-        placeholder,
-        index: match.index,
-      });
-    }
+    entities.push({
+      type: 'name',
+      value,
+      substitute: generateSubstitute('name', value, usedSubstitutes),
+      index: match.index,
+    });
   }
 
-  // Email detection
   const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g;
   while ((match = emailRegex.exec(text)) !== null) {
     const value = match[0];
-    if (seenValues.has(value)) {
-      entities.push({
-        type: 'email',
-        value,
-        placeholder: seenValues.get(value)!,
-        index: match.index,
-      });
-    } else {
-      const placeholder = generatePlaceholder('email', index++);
-      seenValues.set(value, placeholder);
-      entities.push({
-        type: 'email',
-        value,
-        placeholder,
-        index: match.index,
-      });
-    }
+    entities.push({
+      type: 'email',
+      value,
+      substitute: generateSubstitute('email', value, usedSubstitutes),
+      index: match.index,
+    });
   }
 
-  // Phone number detection (various formats)
   const phoneRegex = /(?:\+\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g;
   while ((match = phoneRegex.exec(text)) !== null) {
     const value = match[0];
-    if (seenValues.has(value)) {
-      entities.push({
-        type: 'phone',
-        value,
-        placeholder: seenValues.get(value)!,
-        index: match.index,
-      });
-    } else {
-      const placeholder = generatePlaceholder('phone', index++);
-      seenValues.set(value, placeholder);
-      entities.push({
-        type: 'phone',
-        value,
-        placeholder,
-        index: match.index,
-      });
-    }
+    entities.push({
+      type: 'phone',
+      value,
+      substitute: generateSubstitute('phone', value, usedSubstitutes),
+      index: match.index,
+    });
   }
 
-  // SSN detection (including with and without dashes)
-  const ssnRegex = /\b\d{3}[-.]?\d{2}[-.]?\d{4}\b/g;
-  while ((match = ssnRegex.exec(text)) !== null) {
-    const value = match[0];
-    if (seenValues.has(value)) {
-      entities.push({
-        type: 'ssn',
-        value,
-        placeholder: seenValues.get(value)!,
-        index: match.index,
-      });
-    } else {
-      const placeholder = generatePlaceholder('ssn', index++);
-      seenValues.set(value, placeholder);
-      entities.push({
-        type: 'ssn',
-        value,
-        placeholder,
-        index: match.index,
-      });
-    }
-  }
-
-  // Date of birth detection (various formats)
-  const dobRegex = /\b(?:\d{1,2}[-/]\d{1,2}[-/]\d{2,4}|\d{4}[-/]\d{1,2}[-/]\d{1,2})\b/g;
-  while ((match = dobRegex.exec(text)) !== null) {
-    const value = match[0];
-    if (seenValues.has(value)) {
-      entities.push({
-        type: 'dob',
-        value,
-        placeholder: seenValues.get(value)!,
-        index: match.index,
-      });
-    } else {
-      const placeholder = generatePlaceholder('dob', index++);
-      seenValues.set(value, placeholder);
-      entities.push({
-        type: 'dob',
-        value,
-        placeholder,
-        index: match.index,
-      });
-    }
-  }
-
-  // Address detection (basic format)
   const addressRegex = /\b\d+\s+[A-Za-z\s,]+(?:Avenue|Ave|Street|St|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr|Circle|Cir|Court|Ct|Way|Place|Pl)\b/gi;
   while ((match = addressRegex.exec(text)) !== null) {
     const value = match[0];
-    if (seenValues.has(value)) {
-      entities.push({
-        type: 'address',
-        value,
-        placeholder: seenValues.get(value)!,
-        index: match.index,
-      });
-    } else {
-      const placeholder = generatePlaceholder('address', index++);
-      seenValues.set(value, placeholder);
-      entities.push({
-        type: 'address',
-        value,
-        placeholder,
-        index: match.index,
-      });
-    }
+    entities.push({
+      type: 'address',
+      value,
+      substitute: generateSubstitute('address', value, usedSubstitutes),
+      index: match.index,
+    });
   }
 
-  // Bank account number detection (basic format)
-  const accountRegex = /\b\d{8,17}\b/g;
-  while ((match = accountRegex.exec(text)) !== null) {
-    // Avoid matching numbers that were already detected as phone or SSN
-    const value = match[0];
-    if (!entities.some(e => e.index === match.index)) {
-      if (seenValues.has(value)) {
-        entities.push({
-          type: 'account',
-          value,
-          placeholder: seenValues.get(value)!,
-          index: match.index,
-        });
-      } else {
-        const placeholder = generatePlaceholder('account', index++);
-        seenValues.set(value, placeholder);
-        entities.push({
-          type: 'account',
-          value,
-          placeholder,
-          index: match.index,
-        });
-      }
-    }
-  }
-
-  // Sort entities by index to ensure proper replacement order
   return entities.sort((a, b) => a.index - b.index);
 };
 
@@ -265,7 +148,7 @@ export const maskText = (text: string, entities: DetectedEntity[]): string => {
   for (const entity of sortedEntities) {
     maskedText = 
       maskedText.substring(0, entity.index) +
-      entity.placeholder +
+      entity.substitute +
       maskedText.substring(entity.index + entity.value.length);
   }
   
@@ -286,43 +169,13 @@ export const validatePlaceholdersDetailed = (
   };
 
   for (const entity of entities) {
-    const cleanPlaceholder = entity.placeholder.replace(new RegExp(ZERO_WIDTH_SPACE, 'g'), '');
-    
-    if (!maskedText.includes(entity.placeholder)) {
-      // Check for similar placeholders if exact match not found
-      const similarPlaceholder = findSimilarPlaceholder(maskedText, cleanPlaceholder);
-      
-      if (similarPlaceholder) {
-        result.suggestedFixes.push({
-          original: cleanPlaceholder,
-          modified: similarPlaceholder,
-        });
-        result.alteredPlaceholders.push(entity.placeholder);
-        result.recoverable = true;
-      } else {
-        result.missingPlaceholders.push(entity.placeholder);
-        // Only mark as unrecoverable if we can't find any similar matches
-        if (!result.suggestedFixes.length) {
-          result.recoverable = false;
-        }
-      }
+    if (!maskedText.includes(entity.substitute)) {
+      result.missingPlaceholders.push(entity.substitute);
+      result.recoverable = false;
     }
   }
 
-  // Check for any invalid format placeholders
-  const placeholderRegex = /[{⟦⟪⟬❲⟨❴][^}⟧⟫⟭❳⟩❵]+[}⟧⟫⟭❳⟩❵]/g;
-  const matches = maskedText.match(placeholderRegex) || [];
-  
-  matches.forEach(match => {
-    if (!entities.some(e => e.placeholder.includes(match))) {
-      result.invalidFormatPlaceholders.push(match);
-    }
-  });
-
-  result.isValid = result.missingPlaceholders.length === 0 && 
-                  result.alteredPlaceholders.length === 0 && 
-                  result.invalidFormatPlaceholders.length === 0;
-
+  result.isValid = result.missingPlaceholders.length === 0;
   return result;
 };
 
@@ -332,22 +185,8 @@ export const restoreText = (
 ): string => {
   let restoredText = maskedText;
   
-  // First, attempt to restore exact matches
   for (const entity of entities) {
-    if (restoredText.includes(entity.placeholder)) {
-      restoredText = restoredText.replace(entity.placeholder, entity.value);
-    }
-  }
-  
-  // Then, attempt to restore from similar placeholders
-  const validation = validatePlaceholdersDetailed(maskedText, entities);
-  if (validation.recoverable && validation.suggestedFixes.length > 0) {
-    for (const { original, modified } of validation.suggestedFixes) {
-      const entity = entities.find(e => e.placeholder.includes(original));
-      if (entity) {
-        restoredText = restoredText.replace(modified, entity.value);
-      }
-    }
+    restoredText = restoredText.replace(entity.substitute, entity.value);
   }
   
   return restoredText;
