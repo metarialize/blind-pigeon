@@ -1,4 +1,4 @@
-export type SensitiveDataType = 'name' | 'email' | 'phone' | 'address' | 'ssn' | 'dob' | 'account';
+export type SensitiveDataType = 'name' | 'email' | 'phone' | 'address' | 'ssn' | 'dob' | 'account' | 'custom';
 
 export interface DetectedEntity {
   type: SensitiveDataType;
@@ -26,6 +26,7 @@ const BRACKET_STYLES: Record<SensitiveDataType, { open: string; close: string }>
   ssn: { open: '❲', close: '❳' },
   dob: { open: '⟨', close: '⟩' },
   account: { open: '❴', close: '❵' },
+  custom: { open: '「', close: '」' },
 };
 
 const levenshteinDistance = (a: string, b: string): number => {

@@ -28,7 +28,7 @@ import {
   restoreText,
   validatePlaceholders,
   validatePlaceholdersDetailed,
-  generatePlaceholder,
+  generateSubstitute,
   type DetectedEntity,
   type SensitiveDataType,
   type ValidationResult,
@@ -168,7 +168,7 @@ export function StepProcessor() {
   const [entities, setEntities] = useState<DetectedEntity[]>([]);
   const [showOriginal, setShowOriginal] = useState(true);
   const [manualValue, setManualValue] = useState("");
-  const [manualType, setManualType] = useState<keyof typeof categoryColors>("name");
+  const [manualType, setManualType] = useState<SensitiveDataType | "custom">("name");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Record<SensitiveDataType, boolean>>({
     name: false,
@@ -391,7 +391,7 @@ export function StepProcessor() {
     const newEntity: DetectedEntity = {
       type: manualType,
       value: manualValue,
-      substitute: generatePlaceholder(manualType, entities.length),
+      substitute: generateSubstitute(manualType, manualValue, new Map()),
       index: inputText.indexOf(manualValue),
     };
 
@@ -596,7 +596,7 @@ export function StepProcessor() {
                                   <Label>Category</Label>
                                   <Select
                                     value={manualType}
-                                    onValueChange={(value) => setManualType(value as SensitiveDataType)}
+                                    onValueChange={(value) => setManualType(value as SensitiveDataType | "custom")}
                                   >
                                     <SelectTrigger>
                                       <SelectValue />
