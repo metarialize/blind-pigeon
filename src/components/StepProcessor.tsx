@@ -1,3 +1,4 @@
+<lov-code>
 import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -10,7 +11,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Eye, EyeOff, Copy, RotateCcw, ChevronLeft, ChevronRight, Plus, X, ChevronDown, Shield, Download } from "lucide-react";
+import { Eye, EyeOff, Copy, RotateCcw, ChevronLeft, ChevronRight, Plus, X, ChevronDown, Shield, Download, Check, Edit2 } from "lucide-react";
 import {
   HoverCard,
   HoverCardTrigger,
@@ -66,7 +67,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { RedactionReviewPanel } from './RedactionReviewPanel';
 import { getMappings, clearSessionMappings } from '@/lib/text-processor';
 
 type Step = {
@@ -222,6 +222,9 @@ export function StepProcessor() {
 
   const [allItemsReviewed, setAllItemsReviewed] = useState(false);
   const [textCopied, setTextCopied] = useState(false);
+
+  const [editStates, setEditStates] = React.useState<Record<string, boolean>>({});
+  const [editValues, setEditValues] = React.useState<Record<string, string>>({});
 
   const isStepValid = (step: number): boolean => {
     switch (step) {
@@ -551,6 +554,24 @@ export function StepProcessor() {
     </div>
   );
 
+  const handleEdit = (original: string) => {
+    setEditStates(prev => ({ ...prev, [original]: true }));
+    setEditValues(prev => ({ ...prev, [original]: entities.find(m => m.value === original)?.substitute || '' }));
+  };
+
+  const handleSave = (original: string) => {
+    const newValue = editValues[original];
+    if (newValue && newValue !== entities.find(m => m.value === original)?.substitute) {
+      // updateMapping(original, newValue);
+      // onUpdate();
+      toast({
+        title: "Substitution updated",
+        description: `Updated replacement for "${original}"`,
+      });
+    }
+    setEditStates(prev => ({ ...prev, [original]: false }));
+  };
+
   const handleNext = () => {
     if (isStepValid(currentStep)) {
       setCurrentStep(prev => prev + 1);
@@ -644,14 +665,6 @@ export function StepProcessor() {
                         )}
                       </div>
                     </div>
-
-                    <RedactionReviewPanel 
-                      mappings={getMappings()}
-                      onUpdate={() => {
-                        const newMaskedText = maskText(inputText, entities);
-                        setMaskedText(newMaskedText);
-                      }}
-                    />
 
                     <Collapsible className="border rounded-lg bg-muted/50">
                       <CollapsibleTrigger asChild>
@@ -761,19 +774,57 @@ export function StepProcessor() {
                                         <ChevronRight className="h-3 w-3 text-muted-foreground" />
                                         <div className="flex flex-col space-y-1">
                                           <span className="text-xs text-muted-foreground">Placeholder</span>
-                                          <code className="p-1.5 bg-muted/50 rounded text-xs">
-                                            {item.substitute.replace(/[\u200B-\u200D\uFEFF]/g, '')}
-                                          </code>
+                                          {editStates[item.value] ? (
+                                            <Input
+                                              value={editValues[item.value] || item.substitute}
+                                              onChange={(e) => setEditValues(prev => ({ ...prev, [item.value]: e.target.value }))}
+                                              className="text-xs"
+                                            />
+                                          ) : (
+                                            <code className="p-1.5 bg-muted/50 rounded text-xs">
+                                              {item.substitute}
+                                            </code>
+                                          )}
                                         </div>
                                       </div>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleRemoveEntity(item.type, item.value)}
-                                        className="opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive"
-                                      >
-                                        <X className="h-4 w-4" />
-                                      </Button>
+                                      <div className="flex items-center gap-2">
+                                        {editStates[item.value] ? (
+                                          <>
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              onClick={() => setEditStates(prev => ({ ...prev, [item.value]: false }))}
+                                            >
+                                              <X className="h-4 w-4" />
+                                            </Button>
+                                            <Button
+                                              variant="default"
+                                              size="sm"
+                                              onClick={() => handleSave(item.value)}
+                                            >
+                                              <Check className="h-4 w-4" />
+                                            </Button>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              onClick={() => handleEdit(item.value)}
+                                            >
+                                              <Edit2 className="h-4 w-4" />
+                                            </Button>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              onClick={() => handleRemoveEntity(item.type, item.value)}
+                                              className="hover:bg-destructive/10 hover:text-destructive"
+                                            >
+                                              <X className="h-4 w-4" />
+                                            </Button>
+                                          </>
+                                        )}
+                                      </div>
                                     </div>
                                   ))}
                                 </div>
@@ -785,11 +836,7 @@ export function StepProcessor() {
                     </Collapsible>
 
                     <div className="flex justify-between items-center">
-                      <Button 
-                        variant="outline" 
-                        onClick={() => setCurrentStep(0)}
-                        className="transition-colors duration-200"
-                      >
+                      <Button variant="outline" onClick={() => setCurrentStep(0)}>
                         <ChevronLeft className="mr-2 h-4 w-4" />
                         Back
                       </Button>
@@ -882,192 +929,3 @@ export function StepProcessor() {
                     <div className="space-y-2">
                       <Label className="text-sm font-medium">Original Masked Text (Reference)</Label>
                       <div className="p-4 bg-muted/50 rounded-lg font-mono text-sm max-h-[100px] overflow-y-auto">
-                        {formatPlaceholderDisplay(maskedText, entities)}
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">Paste Modified Text</Label>
-                      <Textarea
-                        value=""
-                        onChange={(e) => {
-                          const newText = e.target.value;
-                          setMaskedText(newText);
-                          setValidationResult(validatePlaceholdersDetailed(newText, entities));
-                        }}
-                        placeholder="Paste the modified masked text here after processing externally..."
-                        className="min-h-[150px] font-mono text-sm"
-                      />
-                    </div>
-                    
-                    {maskedText && (
-                      <div className={`p-4 rounded-lg space-y-2 ${
-                        validationResult.isValid 
-                          ? 'bg-green-50 border border-green-200'
-                          : 'bg-yellow-50 border border-yellow-200'
-                      }`}>
-                        <div className="flex items-center gap-2">
-                          <span>{validationResult.isValid ? '✅' : '❗'}</span>
-                          <p className={`text-sm font-medium ${
-                            validationResult.isValid ? 'text-green-700' : 'text-yellow-700'
-                          }`}>
-                            {validationResult.isValid 
-                              ? "Validation successful! Ready to restore original data."
-                              : "Warning: Some placeholders have been altered. Review before proceeding."}
-                          </p>
-                        </div>
-
-                        {!validationResult.isValid && (
-                          <div className="pl-6 space-y-2">
-                            {validationResult.missingPlaceholders.length > 0 && (
-                              <div className="text-sm text-yellow-700">
-                                <p className="font-medium">Missing Placeholders:</p>
-                                <ul className="list-disc pl-4 pt-1 space-y-1">
-                                  {validationResult.missingPlaceholders.map((placeholder, idx) => (
-                                    <li key={idx} className="font-mono text-xs">{placeholder}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                            {validationResult.invalidFormatPlaceholders.length > 0 && (
-                              <div className="text-sm text-yellow-700">
-                                <p className="font-medium">Invalid Format Placeholders:</p>
-                                <ul className="list-disc pl-4 pt-1 space-y-1">
-                                  {validationResult.invalidFormatPlaceholders.map((placeholder, idx) => (
-                                    <li key={idx} className="font-mono text-xs">{placeholder}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    
-                    <div className="flex justify-between items-center">
-                      <div className="space-x-2">
-                        <Button variant="outline" onClick={() => setCurrentStep(1)}>
-                          <ChevronLeft className="mr-2 h-4 w-4" />
-                          Back
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          onClick={() => {
-                            setMaskedText(maskedText);
-                            setValidationResult(validatePlaceholdersDetailed(maskedText, entities));
-                          }}
-                        >
-                          <RotateCcw className="mr-2 h-4 w-4" />
-                          Reset & Revalidate
-                        </Button>
-                      </div>
-                      
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button 
-                              onClick={handleRestore}
-                              variant={validationResult.isValid ? "default" : "outline"}
-                              disabled={!maskedText || !validationResult.isValid}
-                            >
-                              <Eye className="mr-2 h-4 w-4" />
-                              Restore Original Data
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            {!maskedText 
-                              ? "Please paste the masked text to proceed"
-                              : !validationResult.isValid
-                              ? "All placeholders must be intact to restore data"
-                              : "Click to restore the original text"}
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
-                  </div>
-                );
-
-              case 4:
-                return (
-                  <div className="space-y-6 animate-fade-in">
-                    <div className="p-6 rounded-lg bg-white shadow-sm border space-y-4">
-                      <div className="flex items-center justify-center mb-4">
-                        <Shield className="h-12 w-12 text-primary" />
-                      </div>
-                      <h3 className="text-xl font-semibold text-center">
-                        Text Successfully Restored!
-                      </h3>
-                      <p className="text-center text-muted-foreground">
-                        Your text has been fully restored. You can now copy or download it.
-                      </p>
-                      <div className="flex justify-center gap-4 mt-4">
-                        <Button variant="outline" onClick={handleReset}>
-                          <RotateCcw className="mr-2 h-4 w-4" />
-                          Start Over
-                        </Button>
-                        <Button onClick={() => {/* Add download handler */}}>
-                          <Download className="mr-2 h-4 w-4" />
-                          Download Text
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                );
-
-              default:
-                return null;
-            }
-          })()}
-        </div>
-      </div>
-    );
-  };
-
-  return (
-    <div className="w-full max-w-4xl mx-auto space-y-6">
-      <Card className="p-6 backdrop-blur-sm bg-white/90 shadow-lg">
-        <div className="space-y-6">
-          {renderStepIndicator()}
-          <div className="transition-all duration-300">
-            {renderStepContent()}
-          </div>
-          <div className="flex justify-between mt-6">
-            {currentStep > 0 && (
-              <Button
-                variant="outline"
-                onClick={handleBack}
-                className="transition-colors duration-200"
-              >
-                <ChevronLeft className="mr-2 h-4 w-4" />
-                Back
-              </Button>
-            )}
-            {currentStep < steps.length - 1 && (
-              <Button
-                onClick={handleNext}
-                disabled={!isStepValid(currentStep)}
-                className={`ml-auto transition-all duration-300 ${
-                  !isStepValid(currentStep) ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'
-                }`}
-              >
-                {currentStep === 2 ? (
-                  <>
-                    <Copy className="mr-2 h-4 w-4" />
-                    Copy & Continue
-                  </>
-                ) : (
-                  <>
-                    Next
-                    <ChevronRight className="ml-2 h-4 w-4" />
-                  </>
-                )}
-              </Button>
-            )}
-          </div>
-        </div>
-      </Card>
-    </div>
-  );
-}
-
-export default StepProcessor;
