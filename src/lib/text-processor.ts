@@ -14,6 +14,8 @@ export interface ValidationResult {
   invalidFormatPlaceholders: string[];
   recoverable: boolean;
   suggestedFixes: { original: string; modified: string; }[];
+  duplicateSubstitutes: string[];
+  inconsistentMappings: { value: string; substitutes: string[]; }[];
 }
 
 import { getRandomSubstitute } from './random-data';
@@ -74,13 +76,39 @@ const findSimilarPlaceholder = (text: string, original: string): string | null =
   return bestMatch;
 };
 
-export const generateSubstitute = (type: SensitiveDataType, value: string, usedSubstitutes: Map<string, string>): string => {
-  if (usedSubstitutes.has(value)) {
-    return usedSubstitutes.get(value)!;
+export interface SubstitutionMapping {
+  original: string;
+  substitute: string;
+  type: SensitiveDataType;
+  approved?: boolean;
+}
+
+let currentSessionMappings = new Map<string, SubstitutionMapping>();
+
+export const clearSessionMappings = () => {
+  currentSessionMappings.clear();
+};
+
+export const generateSubstitute = (
+  type: SensitiveDataType,
+  value: string,
+  usedSubstitutes: Map<string, string>
+): string => {
+  const existingMapping = currentSessionMappings.get(value);
+  if (existingMapping) {
+    return existingMapping.substitute;
   }
 
   const usedValues = new Set(usedSubstitutes.values());
   const substitute = getRandomSubstitute(type, usedValues);
+  
+  currentSessionMappings.set(value, {
+    original: value,
+    substitute,
+    type,
+    approved: false
+  });
+  
   usedSubstitutes.set(value, substitute);
   return substitute;
 };
@@ -162,6 +190,8 @@ export const validatePlaceholdersDetailed = (
     invalidFormatPlaceholders: [],
     recoverable: true,
     suggestedFixes: [],
+    duplicateSubstitutes: [],
+    inconsistentMappings: []
   };
 
   for (const entity of entities) {
@@ -194,4 +224,79 @@ export const validatePlaceholders = (
 ): boolean => {
   const validation = validatePlaceholdersDetailed(text, entities);
   return validation.isValid;
+};
+
+export const getMappings = (): SubstitutionMapping[] => {
+  return Array.from(currentSessionMappings.values());
+};
+
+export const updateMapping = (original: string, newSubstitute: string) => {
+  const mapping = currentSessionMappings.get(original);
+  if (mapping) {
+    mapping.substitute = newSubstitute;
+    mapping.approved = true;
+    currentSessionMappings.set(original, mapping);
+  }
+};
+
+export const approveMapping = (original: string) => {
+  const mapping = currentSessionMappings.get(original);
+  if (mapping) {
+    mapping.approved = true;
+    currentSessionMappings.set(original, mapping);
+  }
+};
+
+export const validateSubstitutions = (entities: DetectedEntity[]): ValidationResult => {
+  const result: ValidationResult = {
+    isValid: true,
+    missingPlaceholders: [],
+    alteredPlaceholders: [],
+    invalidFormatPlaceholders: [],
+    recoverable: true,
+    suggestedFixes: [],
+    duplicateSubstitutes: [],
+    inconsistentMappings: []
+  };
+
+  const substituteCounts = new Map<string, string[]>();
+  const valueMappings = new Map<string, Set<string>>();
+
+  for (const entity of entities) {
+    // Check for duplicate substitutes
+    if (!substituteCounts.has(entity.substitute)) {
+      substituteCounts.set(entity.substitute, [entity.value]);
+    } else {
+      substituteCounts.get(entity.substitute)?.push(entity.value);
+    }
+
+    // Check for inconsistent mappings
+    if (!valueMappings.has(entity.value)) {
+      valueMappings.set(entity.value, new Set([entity.substitute]));
+    } else {
+      valueMappings.get(entity.value)?.add(entity.substitute);
+    }
+  }
+
+  // Find duplicates
+  for (const [substitute, originals] of substituteCounts) {
+    if (originals.length > 1) {
+      result.duplicateSubstitutes.push(substitute);
+    }
+  }
+
+  // Find inconsistencies
+  for (const [value, substitutes] of valueMappings) {
+    if (substitutes.size > 1) {
+      result.inconsistentMappings.push({
+        value,
+        substitutes: Array.from(substitutes)
+      });
+    }
+  }
+
+  result.isValid = result.duplicateSubstitutes.length === 0 && 
+                   result.inconsistentMappings.length === 0;
+
+  return result;
 };

@@ -66,6 +66,8 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { RedactionReviewPanel } from './RedactionReviewPanel';
+import { getMappings, clearSessionMappings } from '@/lib/text-processor';
 
 type Step = {
   title: string;
@@ -373,6 +375,7 @@ export function StepProcessor() {
     setEntities([]);
     setShowOriginal(true);
     setCurrentStep(0);
+    clearSessionMappings();
     toast({
       title: "Reset successful",
       description: "All text and stored data has been cleared.",
@@ -551,6 +554,14 @@ export function StepProcessor() {
                         )}
                       </div>
                     </div>
+
+                    <RedactionReviewPanel 
+                      mappings={getMappings()}
+                      onUpdate={() => {
+                        const newMaskedText = maskText(inputText, entities);
+                        setMaskedText(newMaskedText);
+                      }}
+                    />
 
                     <Collapsible className="border rounded-lg bg-muted/50">
                       <CollapsibleTrigger asChild>
