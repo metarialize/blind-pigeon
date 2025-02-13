@@ -1,4 +1,4 @@
-export type SensitiveDataType = 'name' | 'email' | 'phone' | 'address' | 'ssn' | 'dob' | 'account' | 'custom' | 'place';
+export type SensitiveDataType = 'name' | 'email' | 'phone' | 'address' | 'ssn' | 'dob' | 'account' | 'custom';
 
 export interface DetectedEntity {
   type: SensitiveDataType;
@@ -113,88 +113,30 @@ export const generateSubstitute = (
   return substitute;
 };
 
-// Comprehensive exclusion list
-const exclusions = new Set([
-  // Months and Days
-  'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December',
-  'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday',
-  
-  // Companies and Brands
-  'Samsung', 'Apple', 'Google', 'Microsoft', 'Amazon', 'Facebook', 'Twitter', 'LinkedIn', 'Instagram',
-  
-  // Street Types
-  'Street', 'Avenue', 'Road', 'Boulevard', 'Lane', 'Drive', 'Circle', 'Court', 'Way', 'Place',
-  'St', 'Ave', 'Rd', 'Blvd', 'Ln', 'Dr', 'Cir', 'Ct', 'Pl',
-  
-  // Business Terms
-  'Inc', 'LLC', 'Corp', 'Corporation', 'Company', 'Limited', 'International', 'Industries',
-  
-  // Locations and Institutions
-  'New', 'York', 'City', 'Los', 'Angeles', 'San', 'Francisco', 'Chicago', 'Boston', 'Seattle',
-  'North', 'South', 'East', 'West', 'Central', 'University', 'College', 'Institute', 'School',
-  'Medical', 'Hospital', 'Center', 'Department',
-  
-  // Common Phrases and Terms
-  'Social', 'Security', 'Medicare', 'Medicaid', 'Administration', 'Government',
-  'There', 'That', 'This', 'Been', 'Done', 'Made', 'Corporate', 'Public', 'Private',
-  'Northwestern', 'Southern', 'Eastern', 'Western', 'National', 'International',
-  
-  // Common Business Names
-  'Bean', 'Coffee', 'Cafe', 'Restaurant', 'Shop', 'Store', 'Market', 'Bank', 'Financial',
-  
-  // States
-  'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut',
-  'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa',
-  'Kansas', 'Kentucky', 'Louisiana', 'Maine', 'Maryland', 'Massachusetts', 'Michigan',
-  'Minnesota', 'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada', 'Hampshire',
-  'Jersey', 'Mexico', 'Dakota', 'Ohio', 'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode',
-  'Island', 'Carolina', 'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia', 'Washington',
-  'Wisconsin', 'Wyoming'
-]);
-
-const detectPlaces = (text: string): DetectedEntity[] => {
-  const placeRegex = /\b(?:(?:University|College|Hospital|School|Mall|Park|Station|Airport|Museum|Theater|Library|Restaurant|Cafe|Hotel|Plaza|Center|Centre|Building)\s+(?:of\s+)?[A-Z][a-zA-Z\s&]+|\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\s+(?:University|College|Hospital|School|Mall|Park|Station|Airport|Museum|Theater|Library|Restaurant|Cafe|Hotel|Plaza|Center|Centre|Building))\b/g;
-  const entities: DetectedEntity[] = [];
-  const usedSubstitutes = new Map<string, string>();
-
-  let match;
-  while ((match = placeRegex.exec(text)) !== null) {
-    const value = match[0];
-    if (!exclusions.has(value)) {
-      entities.push({
-        type: 'place',
-        value,
-        substitute: generateSubstitute('place', value, usedSubstitutes),
-        index: match.index,
-      });
-    }
-  }
-  return entities;
-};
-
 export const detectSensitiveData = (text: string): DetectedEntity[] => {
   const entities: DetectedEntity[] = [];
   const usedSubstitutes = new Map<string, string>();
+  
+  // Common words to exclude from name detection
+  const exclusions = new Set([
+    'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December',
+    'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday',
+    'Samsung', 'Apple', 'Google', 'Microsoft', 'Amazon',
+    'Street', 'Avenue', 'Road', 'Boulevard', 'Lane', 'Drive', 'Circle', 'Court', 'Way', 'Place',
+    'Inc', 'LLC', 'Corp', 'Corporation', 'Company'
+  ]);
 
-  // Detect places first to avoid conflicts with names
-  const placeEntities = detectPlaces(text);
-  entities.push(...placeEntities);
-
-  // Name detection
-  const nameRegex = /\b[A-Z][a-z]+(?:\s+(?:[A-Z][a-z]+|[A-Z]\.)){1,2}\b(?!\s+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Inc|LLC|Corp|University|College|Hospital|School))/g;
+  // More precise name pattern that requires both first and last name
+  // and excludes common words
+  const nameRegex = /\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+\b/g;
   let match;
   while ((match = nameRegex.exec(text)) !== null) {
     const value = match[0];
+    // Skip if any part of the name is in exclusions
     const nameParts = value.split(/\s+/);
     const isExcluded = nameParts.some(part => exclusions.has(part));
     
-    const isLikelyName = (
-      nameParts.length >= 2 &&
-      nameParts.every(part => part.length >= 2) &&
-      !placeEntities.some(place => place.value.includes(value))
-    );
-    
-    if (!isExcluded && isLikelyName) {
+    if (!isExcluded) {
       entities.push({
         type: 'name',
         value,
@@ -204,7 +146,7 @@ export const detectSensitiveData = (text: string): DetectedEntity[] => {
     }
   }
 
-  // Email pattern (unchanged)
+  // Email pattern (unchanged as it's already specific)
   const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g;
   while ((match = emailRegex.exec(text)) !== null) {
     const value = match[0];
@@ -216,7 +158,7 @@ export const detectSensitiveData = (text: string): DetectedEntity[] => {
     });
   }
 
-  // Phone number pattern (unchanged)
+  // Phone number pattern (unchanged as it's already specific)
   const phoneRegex = /(?:\+\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g;
   while ((match = phoneRegex.exec(text)) !== null) {
     const value = match[0];
@@ -228,16 +170,19 @@ export const detectSensitiveData = (text: string): DetectedEntity[] => {
     });
   }
 
-  // More specific address pattern
-  const addressRegex = /\b\d+(?:\s+[A-Za-z]+)+(?:\s+(?:Avenue|Ave|Street|St|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr|Circle|Cir|Court|Ct|Way|Place|Pl))\b(?!\s+(?:January|February|March|April|May|June|July|August|September|October|November|December))/gi;
+  // More specific address pattern that requires a number and street type
+  const addressRegex = /\b\d+(?:\s+[A-Za-z]+)+(?:\s+(?:Avenue|Ave|Street|St|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr|Circle|Cir|Court|Ct|Way|Place|Pl))\b/gi;
   while ((match = addressRegex.exec(text)) !== null) {
     const value = match[0];
-    entities.push({
-      type: 'address',
-      value,
-      substitute: generateSubstitute('address', value, usedSubstitutes),
-      index: match.index,
-    });
+    // Ensure we're not catching date patterns
+    if (!/^\d{1,2}(?:st|nd|rd|th)?\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\b/i.test(value)) {
+      entities.push({
+        type: 'address',
+        value,
+        substitute: generateSubstitute('address', value, usedSubstitutes),
+        index: match.index,
+      });
+    }
   }
 
   return entities.sort((a, b) => a.index - b.index);
