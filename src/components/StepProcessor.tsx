@@ -11,7 +11,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Eye, EyeOff, Copy, RotateCcw, ChevronLeft, ChevronRight, Plus, X, ChevronDown, Shield, Download } from "lucide-react";
+import { Eye, EyeOff, Copy, RotateCcw, ChevronLeft, ChevronRight, Plus, X, ChevronDown, Shield, Download, Check, Edit2 } from "lucide-react";
 import {
   HoverCard,
   HoverCardTrigger,
@@ -33,6 +33,7 @@ import {
   type DetectedEntity,
   type SensitiveDataType,
   type ValidationResult,
+  updateMapping,
 } from "@/lib/text-processor";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -103,6 +104,7 @@ const categoryColors: Record<SensitiveDataType | 'custom', { bg: string; text: s
   dob: { bg: "bg-red-100", text: "text-red-700", icon: "🔴" },
   ssn: { bg: "bg-gray-100", text: "text-gray-700", icon: "⚪" },
   account: { bg: "bg-green-100", text: "text-green-700", icon: "🟣" },
+  place: { bg: "bg-indigo-100", text: "text-indigo-700", icon: "🏛️" },
   custom: { bg: "bg-pink-100", text: "text-pink-700", icon: "💫" },
 };
 
@@ -593,9 +595,9 @@ export function StepProcessor() {
                               return acc;
                             }, {} as Record<SensitiveDataType, DetectedEntity[]>)
                           ).map(([type, items]) => (
-                            <Collapsible key={type}>
+                            <Collapsible key={type} className="border rounded-lg overflow-hidden">
                               <CollapsibleTrigger className="w-full">
-                                <div className={`flex items-center justify-between w-full px-3 py-2 rounded-lg ${categoryColors[type as SensitiveDataType].bg} ${categoryColors[type as SensitiveDataType].text}`}>
+                                <div className={`flex items-center justify-between w-full px-3 py-2 ${categoryColors[type as SensitiveDataType].bg} ${categoryColors[type as SensitiveDataType].text}`}>
                                   <div className="flex items-center gap-2">
                                     <span>{categoryColors[type as SensitiveDataType].icon}</span>
                                     <span className="capitalize font-medium">{type} ({items.length})</span>
@@ -604,93 +606,99 @@ export function StepProcessor() {
                                 </div>
                               </CollapsibleTrigger>
                               <CollapsibleContent>
-                                <div className="ml-6 mt-2 space-y-2">
+                                <div className="divide-y divide-gray-100">
                                   {items.map((item, idx) => (
                                     <div 
                                       key={idx} 
-                                      className="flex items-center gap-2 p-2 bg-muted/5 rounded-lg hover:bg-muted/10 transition-colors group"
+                                      className="p-2 hover:bg-gray-50 transition-colors group"
                                     >
-                                      <div className="flex-1 grid grid-cols-[1fr,auto,1fr] items-center gap-4">
-                                        <div className="flex flex-col space-y-1">
-                                          <span className="text-xs text-muted-foreground">Original</span>
-                                          <code className="p-1.5 bg-muted/50 rounded text-xs truncate" title={item.value}>
-                                            {item.value}
-                                          </code>
-                                        </div>
-                                        <ChevronRight className="h-3 w-3 text-muted-foreground" />
-                                        <div className="flex flex-col space-y-1">
-                                          <span className="text-xs text-muted-foreground">Replacement</span>
-                                          {editStates[item.value] ? (
-                                            <Input
-                                              size="sm"
-                                              value={editValues[item.value] || item.substitute}
-                                              onChange={(e) => setEditValues(prev => ({ ...prev, [item.value]: e.target.value }))}
-                                              className="h-8 text-xs"
-                                            />
-                                          ) : (
-                                            <code className="p-1.5 bg-muted/50 rounded text-xs">
-                                              {item.substitute.replace(/[\u200B-\u200D\uFEFF]/g, '')}
+                                      <div className="flex items-center gap-4">
+                                        <div className="flex-1 grid grid-cols-[1fr,auto,1fr] items-center gap-4">
+                                          <div className="flex flex-col space-y-1">
+                                            <span className="text-xs text-muted-foreground">Original</span>
+                                            <code className="p-1.5 bg-muted/50 rounded text-xs truncate" title={item.value}>
+                                              {item.value}
                                             </code>
+                                          </div>
+                                          <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                                          <div className="flex flex-col space-y-1">
+                                            <span className="text-xs text-muted-foreground">Replacement</span>
+                                            {editStates[item.value] ? (
+                                              <Input
+                                                size="sm"
+                                                value={editValues[item.value] || item.substitute}
+                                                onChange={(e) => setEditValues(prev => ({ ...prev, [item.value]: e.target.value }))}
+                                                className="h-8 text-xs"
+                                              />
+                                            ) : (
+                                              <code className="p-1.5 bg-muted/50 rounded text-xs">
+                                                {item.substitute.replace(/[\u200B-\u200D\uFEFF]/g, '')}
+                                              </code>
+                                            )}
+                                          </div>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                          {editStates[item.value] ? (
+                                            <>
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => {
+                                                  setEditStates(prev => ({ ...prev, [item.value]: false }));
+                                                  setEditValues(prev => ({ ...prev, [item.value]: item.substitute }));
+                                                }}
+                                                className="h-7 w-7"
+                                              >
+                                                <X className="h-3 w-3" />
+                                              </Button>
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => {
+                                                  const newValue = editValues[item.value];
+                                                  if (newValue && newValue !== item.substitute) {
+                                                    const newEntities = entities.map(e => 
+                                                      e.value === item.value ? { ...e, substitute: newValue } : e
+                                                    );
+                                                    setEntities(newEntities);
+                                                    const newMaskedText = maskText(inputText, newEntities);
+                                                    setMaskedText(newMaskedText);
+                                                    toast({
+                                                      title: "Substitution updated",
+                                                      description: `Updated replacement for "${item.value}"`,
+                                                    });
+                                                  }
+                                                  setEditStates(prev => ({ ...prev, [item.value]: false }));
+                                                }}
+                                                className="h-7 w-7"
+                                              >
+                                                <Check className="h-3 w-3" />
+                                              </Button>
+                                            </>
+                                          ) : (
+                                            <>
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => {
+                                                  setEditStates(prev => ({ ...prev, [item.value]: true }));
+                                                  setEditValues(prev => ({ ...prev, [item.value]: item.substitute }));
+                                                }}
+                                                className="h-7 w-7"
+                                              >
+                                                <Edit2 className="h-3 w-3" />
+                                              </Button>
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => handleRemoveEntity(item.type, item.value)}
+                                                className="h-7 w-7 opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive"
+                                              >
+                                                <X className="h-3 w-3" />
+                                              </Button>
+                                            </>
                                           )}
                                         </div>
-                                      </div>
-                                      <div className="flex items-center gap-1">
-                                        {editStates[item.value] ? (
-                                          <>
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              onClick={() => {
-                                                setEditStates(prev => ({ ...prev, [item.value]: false }));
-                                                setEditValues(prev => ({ ...prev, [item.value]: item.substitute }));
-                                              }}
-                                              className="h-7 w-7"
-                                            >
-                                              <X className="h-3 w-3" />
-                                            </Button>
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              onClick={() => {
-                                                const newValue = editValues[item.value];
-                                                if (newValue && newValue !== item.substitute) {
-                                                  updateMapping(item.value, newValue);
-                                                  onUpdate();
-                                                  toast({
-                                                    title: "Substitution updated",
-                                                    description: `Updated replacement for "${item.value}"`,
-                                                  });
-                                                }
-                                                setEditStates(prev => ({ ...prev, [item.value]: false }));
-                                              }}
-                                              className="h-7 w-7"
-                                            >
-                                              <Check className="h-3 w-3" />
-                                            </Button>
-                                          </>
-                                        ) : (
-                                          <>
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              onClick={() => {
-                                                setEditStates(prev => ({ ...prev, [item.value]: true }));
-                                                setEditValues(prev => ({ ...prev, [item.value]: item.substitute }));
-                                              }}
-                                              className="h-7 w-7"
-                                            >
-                                              <Edit2 className="h-3 w-3" />
-                                            </Button>
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              onClick={() => handleRemoveEntity(item.type, item.value)}
-                                              className="h-7 w-7 opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive"
-                                            >
-                                              <X className="h-3 w-3" />
-                                            </Button>
-                                          </>
-                                        )}
                                       </div>
                                     </div>
                                   ))}
@@ -850,4 +858,52 @@ export function StepProcessor() {
                             {validationResult.invalidFormatPlaceholders.length > 0 && (
                               <div className="text-sm text-yellow-700">
                                 <p className="font-medium">Invalid Format Placeholders:</p>
-                                <ul className="
+                                <ul className="list-disc pl-4 pt-1 space-y-1">
+                                  {validationResult.invalidFormatPlaceholders.map((placeholder, idx) => (
+                                    <li key={idx} className="font-mono text-xs">{placeholder}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            {validationResult.alteredPlaceholders.length > 0 && (
+                              <div className="text-sm text-yellow-700">
+                                <p className="font-medium">Altered Placeholders:</p>
+                                <ul className="list-disc pl-4 pt-1 space-y-1">
+                                  {validationResult.alteredPlaceholders.map((placeholder, idx) => (
+                                    <li key={idx} className="font-mono text-xs">{placeholder}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="flex justify-between items-center">
+                      <Button variant="outline" onClick={() => setCurrentStep(2)}>
+                        <ChevronLeft className="mr-2 h-4 w-4" />
+                        Back
+                      </Button>
+                      <Button
+                        onClick={handleRestore}
+                        disabled={!maskedText || !validationResult.isValid}
+                      >
+                        Restore Original Text
+                      </Button>
+                    </div>
+                  </div>
+                );
+
+              default:
+                return null;
+            }
+          })()}
+        </div>
+      </div>
+    );
+  };
+
+  const renderCategoryContent = (type: SensitiveDataType | 'custom', items: DetectedEntity[]) => {
+    return (
+      <Collapsible key={type} className
