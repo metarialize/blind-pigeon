@@ -72,24 +72,49 @@ import { getMappings, clearSessionMappings } from '@/lib/text-processor';
 type Step = {
   title: string;
   description: string;
+  validationMessage: {
+    success: string;
+    warning: string;
+    error: string;
+  };
 };
 
 const steps: Step[] = [
   {
-    title: "Redact Text",
-    description: "Automatically detect and redact sensitive information in one click.",
+    title: "Enter Text & Detect",
+    description: "Input your text and let us detect sensitive information automatically.",
+    validationMessage: {
+      success: "Text ready for detection",
+      warning: "Please enter some text to continue",
+      error: "No text to process",
+    },
   },
   {
     title: "Review & Customize",
-    description: "Effortlessly identify and redact names, addresses, dates, and other sensitive details while maintaining context.",
+    description: "Review detected items and customize redactions as needed.",
+    validationMessage: {
+      success: "All redactions reviewed and approved",
+      warning: "Please review all redacted items",
+      error: "No redactions to review",
+    },
   },
   {
     title: "Copy & Export",
-    description: "Securely copy your redacted text for external use.",
+    description: "Copy your redacted text for external use.",
+    validationMessage: {
+      success: "Text copied successfully",
+      warning: "Copy the text to proceed",
+      error: "Failed to copy text",
+    },
   },
   {
-    title: "Restore Text",
-    description: "Safely restore your original text when needed.",
+    title: "Restore",
+    description: "Paste modified text to restore original data.",
+    validationMessage: {
+      success: "Ready to restore original text",
+      warning: "Paste the modified text to continue",
+      error: "Invalid text format",
+    },
   },
 ];
 
@@ -194,6 +219,31 @@ export function StepProcessor() {
     duplicateSubstitutes: [],
     inconsistentMappings: []
   });
+
+  const [allItemsReviewed, setAllItemsReviewed] = useState(false);
+  const [textCopied, setTextCopied] = useState(false);
+
+  const isStepValid = (step: number): boolean => {
+    switch (step) {
+      case 0:
+        return inputText.trim().length > 0;
+      case 1:
+        return allItemsReviewed && entities.length > 0;
+      case 2:
+        return textCopied && maskedText.length > 0;
+      case 3:
+        return validationResult.isValid;
+      default:
+        return false;
+    }
+  };
+
+  const getStepStatus = (step: number): 'success' | 'warning' | 'error' | undefined => {
+    if (!isStepValid(step)) {
+      return currentStep === step ? 'warning' : 'error';
+    }
+    return 'success';
+  };
 
   const handleDetectAndMask = () => {
     if (!inputText) {
@@ -320,7 +370,7 @@ export function StepProcessor() {
     if (!maskedText) {
       toast({
         title: "No text to copy",
-        description: "Please process some text first.",
+        description: steps[2].validationMessage.error,
         variant: "destructive",
       });
       return;
@@ -328,15 +378,16 @@ export function StepProcessor() {
 
     try {
       await navigator.clipboard.writeText(maskedText);
+      setTextCopied(true);
       toast({
         title: "✅ Text copied successfully!",
-        description: "You can now edit the text externally and paste it back when done.",
+        description: steps[2].validationMessage.success,
       });
-      setCurrentStep(2);
+      handleNext();
     } catch (err) {
       toast({
         title: "❗ Failed to copy",
-        description: "Please try copying the text manually.",
+        description: steps[2].validationMessage.error,
         variant: "destructive",
       });
     }
@@ -434,57 +485,86 @@ export function StepProcessor() {
     });
   };
 
-  const renderStepIndicator = () => {
-    return (
-      <div className="w-full mb-8">
-        <div className="flex items-center justify-between">
-          {steps.map((step, idx) => (
-            <div 
-              key={idx} 
-              className={`flex-1 ${idx !== steps.length - 1 ? 'mr-4' : ''}`}
-            >
-              <div className="relative">
-                <div className="flex items-center">
-                  <div 
-                    className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-colors duration-300 ${
-                      idx === currentStep 
-                        ? 'bg-primary text-primary-foreground ring-2 ring-offset-2 ring-primary'
-                        : idx < currentStep
-                        ? 'bg-primary/80 text-primary-foreground'
-                        : 'bg-muted text-muted-foreground'
-                    }`}
-                  >
-                    {idx + 1}
-                  </div>
-                  {idx !== steps.length - 1 && (
-                    <div className="flex-1 h-0.5 mx-2">
-                      <div 
-                        className={`h-full transition-all duration-500 ${
-                          idx < currentStep ? 'bg-primary' : 'bg-muted'
-                        }`}
-                      />
-                    </div>
-                  )}
+  const renderStepIndicator = () => (
+    <div className="w-full mb-8">
+      <div className="flex items-center justify-between mb-4">
+        {steps.map((step, idx) => (
+          <div 
+            key={idx} 
+            className={`flex-1 ${idx !== steps.length - 1 ? 'mr-4' : ''}`}
+          >
+            <div className="relative">
+              <div className="flex items-center">
+                <div 
+                  className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-300 ${
+                    idx === currentStep 
+                      ? 'bg-primary text-primary-foreground ring-2 ring-offset-2 ring-primary'
+                      : idx < currentStep
+                      ? 'bg-primary/80 text-primary-foreground'
+                      : 'bg-muted text-muted-foreground'
+                  }`}
+                >
+                  {idx + 1}
                 </div>
-                <span className={`absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs whitespace-nowrap ${
-                  idx === currentStep ? 'text-primary font-medium' : 'text-muted-foreground'
-                }`}>
-                  {step.title}
-                </span>
+                {idx !== steps.length - 1 && (
+                  <div className="flex-1 h-0.5 mx-2">
+                    <div 
+                      className={`h-full transition-all duration-500 ${
+                        idx < currentStep ? 'bg-primary' : 'bg-muted'
+                      }`}
+                    />
+                  </div>
+                )}
               </div>
+              <span className={`absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs whitespace-nowrap ${
+                idx === currentStep ? 'text-primary font-medium' : 'text-muted-foreground'
+              }`}>
+                {step.title}
+              </span>
             </div>
-          ))}
-        </div>
-        <div className="mt-12 text-center">
-          <h2 className="text-lg font-medium text-gray-900">
-            {steps[currentStep].title}
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {steps[currentStep].description}
-          </p>
-        </div>
+          </div>
+        ))}
       </div>
-    );
+      <div className="mt-12 text-center space-y-2">
+        <h2 className="text-lg font-medium text-gray-900">
+          {steps[currentStep].title}
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          {steps[currentStep].description}
+        </p>
+        {currentStep > 0 && (
+          <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm ${
+            getStepStatus(currentStep) === 'success'
+              ? 'bg-green-50 text-green-700'
+              : getStepStatus(currentStep) === 'warning'
+              ? 'bg-yellow-50 text-yellow-700'
+              : 'bg-red-50 text-red-700'
+          }`}>
+            <span className="mr-2">
+              {getStepStatus(currentStep) === 'success' ? '✅' : 
+               getStepStatus(currentStep) === 'warning' ? '⚠️' : '❌'}
+            </span>
+            {steps[currentStep].validationMessage[getStepStatus(currentStep) || 'warning']}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const handleNext = () => {
+    if (isStepValid(currentStep)) {
+      setCurrentStep(prev => prev + 1);
+    } else {
+      toast({
+        title: "Action Required",
+        description: steps[currentStep].validationMessage.warning,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleBack = () => {
+    setCurrentStep(prev => Math.max(0, prev - 1));
   };
 
   const renderStepContent = () => {
@@ -946,7 +1026,45 @@ export function StepProcessor() {
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6">
       <Card className="p-6 backdrop-blur-sm bg-white/90 shadow-lg">
-        {renderStepContent()}
+        <div className="space-y-6">
+          {renderStepIndicator()}
+          <div className="transition-all duration-300">
+            {renderStepContent()}
+          </div>
+          <div className="flex justify-between mt-6">
+            {currentStep > 0 && (
+              <Button
+                variant="outline"
+                onClick={handleBack}
+                className="transition-colors duration-200"
+              >
+                <ChevronLeft className="mr-2 h-4 w-4" />
+                Back
+              </Button>
+            )}
+            {currentStep < steps.length - 1 && (
+              <Button
+                onClick={handleNext}
+                disabled={!isStepValid(currentStep)}
+                className={`ml-auto transition-all duration-300 ${
+                  !isStepValid(currentStep) ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'
+                }`}
+              >
+                {currentStep === 2 ? (
+                  <>
+                    <Copy className="mr-2 h-4 w-4" />
+                    Copy & Continue
+                  </>
+                ) : (
+                  <>
+                    Next
+                    <ChevronRight className="ml-2 h-4 w-4" />
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
+        </div>
       </Card>
     </div>
   );
