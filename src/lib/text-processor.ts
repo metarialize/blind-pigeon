@@ -117,18 +117,36 @@ export const detectSensitiveData = (text: string): DetectedEntity[] => {
   const entities: DetectedEntity[] = [];
   const usedSubstitutes = new Map<string, string>();
   
+  // Common words to exclude from name detection
+  const exclusions = new Set([
+    'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December',
+    'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday',
+    'Samsung', 'Apple', 'Google', 'Microsoft', 'Amazon',
+    'Street', 'Avenue', 'Road', 'Boulevard', 'Lane', 'Drive', 'Circle', 'Court', 'Way', 'Place',
+    'Inc', 'LLC', 'Corp', 'Corporation', 'Company'
+  ]);
+
+  // More precise name pattern that requires both first and last name
+  // and excludes common words
   const nameRegex = /\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+\b/g;
   let match;
   while ((match = nameRegex.exec(text)) !== null) {
     const value = match[0];
-    entities.push({
-      type: 'name',
-      value,
-      substitute: generateSubstitute('name', value, usedSubstitutes),
-      index: match.index,
-    });
+    // Skip if any part of the name is in exclusions
+    const nameParts = value.split(/\s+/);
+    const isExcluded = nameParts.some(part => exclusions.has(part));
+    
+    if (!isExcluded) {
+      entities.push({
+        type: 'name',
+        value,
+        substitute: generateSubstitute('name', value, usedSubstitutes),
+        index: match.index,
+      });
+    }
   }
 
+  // Email pattern (unchanged as it's already specific)
   const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g;
   while ((match = emailRegex.exec(text)) !== null) {
     const value = match[0];
@@ -140,6 +158,7 @@ export const detectSensitiveData = (text: string): DetectedEntity[] => {
     });
   }
 
+  // Phone number pattern (unchanged as it's already specific)
   const phoneRegex = /(?:\+\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g;
   while ((match = phoneRegex.exec(text)) !== null) {
     const value = match[0];
@@ -151,15 +170,19 @@ export const detectSensitiveData = (text: string): DetectedEntity[] => {
     });
   }
 
-  const addressRegex = /\b\d+\s+[A-Za-z\s,]+(?:Avenue|Ave|Street|St|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr|Circle|Cir|Court|Ct|Way|Place|Pl)\b/gi;
+  // More specific address pattern that requires a number and street type
+  const addressRegex = /\b\d+(?:\s+[A-Za-z]+)+(?:\s+(?:Avenue|Ave|Street|St|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr|Circle|Cir|Court|Ct|Way|Place|Pl))\b/gi;
   while ((match = addressRegex.exec(text)) !== null) {
     const value = match[0];
-    entities.push({
-      type: 'address',
-      value,
-      substitute: generateSubstitute('address', value, usedSubstitutes),
-      index: match.index,
-    });
+    // Ensure we're not catching date patterns
+    if (!/^\d{1,2}(?:st|nd|rd|th)?\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\b/i.test(value)) {
+      entities.push({
+        type: 'address',
+        value,
+        substitute: generateSubstitute('address', value, usedSubstitutes),
+        index: match.index,
+      });
+    }
   }
 
   return entities.sort((a, b) => a.index - b.index);
