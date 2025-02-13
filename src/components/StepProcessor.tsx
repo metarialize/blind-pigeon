@@ -605,10 +605,10 @@ export function StepProcessor() {
                                     <SelectContent>
                                       {Object.keys(categoryColors).map((type) => (
                                         <SelectItem key={type} value={type}>
-                                          <span className="flex items-center gap-2">
+                                          <div className="flex items-center gap-2">
                                             <span>{categoryColors[type as SensitiveDataType].icon}</span>
                                             <span className="capitalize">{type}</span>
-                                          </span>
+                                          </div>
                                         </SelectItem>
                                       ))}
                                     </SelectContent>
@@ -651,13 +651,19 @@ export function StepProcessor() {
                                       className="flex items-center gap-2 p-2 bg-white/50 rounded-lg hover:bg-white/80 transition-colors"
                                     >
                                       <div className="flex-1 grid grid-cols-[1fr,auto,1fr] items-center gap-4">
-                                        <code className="p-1.5 bg-muted/50 rounded text-xs">
-                                          {item.substitute.replace(/[\u200B-\u200D\uFEFF]/g, '')}
-                                        </code>
+                                        <div className="flex flex-col space-y-1">
+                                          <span className="text-xs text-muted-foreground">Original</span>
+                                          <code className="p-1.5 bg-muted/50 rounded text-xs truncate" title={item.value}>
+                                            {item.value}
+                                          </code>
+                                        </div>
                                         <ChevronRight className="h-3 w-3 text-muted-foreground" />
-                                        <code className="p-1.5 bg-muted/50 rounded text-xs truncate" title={item.value}>
-                                          {item.value}
-                                        </code>
+                                        <div className="flex flex-col space-y-1">
+                                          <span className="text-xs text-muted-foreground">Placeholder</span>
+                                          <code className="p-1.5 bg-muted/50 rounded text-xs">
+                                            {item.substitute.replace(/[\u200B-\u200D\uFEFF]/g, '')}
+                                          </code>
+                                        </div>
                                       </div>
                                       <Button
                                         variant="ghost"
