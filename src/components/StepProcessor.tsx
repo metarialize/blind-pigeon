@@ -472,7 +472,7 @@ export function StepProcessor() {
         </div>
         <div className="mt-12 text-center">
           <h2 className="text-lg font-medium text-gray-900">
-            Step {currentStep + 1} of {steps.length} - {steps[currentStep].title}
+            {steps[currentStep].title}
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
             {steps[currentStep].description}
