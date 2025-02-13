@@ -209,7 +209,7 @@ export function StepProcessor() {
     if (detected.length === 0) {
       toast({
         title: "No sensitive data found",
-        description: "No sensitive data was detected in the provided text.",
+        description: "No sensitive data (names, emails, phone numbers) was detected in the text.",
         variant: "destructive",
       });
       return;
@@ -223,7 +223,7 @@ export function StepProcessor() {
     
     toast({
       title: "Sensitive data masked",
-      description: `${detected.length} items were detected and masked.`,
+      description: `${detected.length} items were automatically detected and masked. You can now review and add custom redactions if needed.`,
     });
   };
 
@@ -414,10 +414,11 @@ export function StepProcessor() {
     const newMaskedText = maskText(inputText, [...entities, newEntity]);
     setMaskedText(newMaskedText);
     setManualValue("");
+    setDialogOpen(false);
     
     toast({
-      title: "Item added",
-      description: `Added new ${manualType} to redacted items.`,
+      title: "Custom redaction added",
+      description: `Added "${manualValue}" to redacted items.`,
     });
   };
 
@@ -497,6 +498,13 @@ export function StepProcessor() {
               case 0:
                 return (
                   <div className="space-y-4">
+                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-sm text-blue-800 flex items-center">
+                        <Shield className="h-4 w-4 mr-2" />
+                        Enter your text below. Names, emails, and phone numbers will be automatically detected and redacted.
+                        You can add more custom redactions in the next step.
+                      </p>
+                    </div>
                     <Textarea
                       value={inputText}
                       onChange={(e) => setInputText(e.target.value)}
@@ -520,7 +528,7 @@ export function StepProcessor() {
                         }`}
                       >
                         <Shield className="mr-2 h-4 w-4" />
-                        Redact
+                        Detect & Redact
                       </Button>
                     </div>
                   </div>
