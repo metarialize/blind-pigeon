@@ -68,6 +68,7 @@ import {
 } from "@/components/ui/collapsible";
 import { RedactionReviewPanel } from './RedactionReviewPanel';
 import { getMappings, clearSessionMappings } from '@/lib/text-processor';
+import { ListCheck } from "lucide-react";
 
 type Step = {
   title: string;
@@ -565,23 +566,15 @@ export function StepProcessor() {
                       </div>
                     </div>
 
-                    <RedactionReviewPanel 
-                      mappings={getMappings()}
-                      onUpdate={() => {
-                        const newMaskedText = maskText(inputText, entities);
-                        setMaskedText(newMaskedText);
-                      }}
-                    />
-
-                    <Collapsible className="border rounded-lg bg-muted/50">
+                    <Collapsible className="border rounded-lg bg-white">
                       <CollapsibleTrigger asChild>
                         <Button 
                           variant="ghost" 
-                          className="w-full flex justify-between items-center p-4 hover:bg-muted/80"
+                          className="w-full flex justify-between items-center p-4 hover:bg-muted/5"
                         >
                           <span className="font-medium flex items-center gap-2">
-                            <Shield className="h-4 w-4" />
-                            Redacted Items ({entities.length})
+                            <ListCheck className="h-4 w-4" />
+                            Review & Manage Redactions ({entities.length})
                           </span>
                           <ChevronDown className="h-4 w-4" />
                         </Button>
@@ -644,32 +637,26 @@ export function StepProcessor() {
                             </DialogContent>
                           </Dialog>
 
-                          {Object.entries(
-                            entities.reduce((acc, entity) => {
-                              if (!acc[entity.type]) {
-                                acc[entity.type] = [];
-                              }
-                              acc[entity.type].push(entity);
-                              return acc;
-                            }, {} as Record<SensitiveDataType, DetectedEntity[]>)
-                          ).map(([type, items]) => (
-                            <Collapsible key={type}>
-                              <CollapsibleTrigger asChild>
-                                <Button 
-                                  variant="ghost" 
-                                  className={`w-full flex items-center gap-2 px-2 py-1.5 hover:bg-white/50 rounded-lg ${categoryColors[type as SensitiveDataType].text}`}
-                                >
+                          <div className="space-y-2">
+                            {Object.entries(
+                              entities.reduce((acc, entity) => {
+                                if (!acc[entity.type]) {
+                                  acc[entity.type] = [];
+                                }
+                                acc[entity.type].push(entity);
+                                return acc;
+                              }, {} as Record<SensitiveDataType, DetectedEntity[]>)
+                            ).map(([type, items]) => (
+                              <div key={type} className="space-y-2">
+                                <div className={`flex items-center gap-2 px-2 py-1.5 ${categoryColors[type as SensitiveDataType].text}`}>
                                   <span>{categoryColors[type as SensitiveDataType].icon}</span>
                                   <span className="capitalize font-medium">{type} ({items.length})</span>
-                                  <ChevronDown className="h-4 w-4 ml-auto" />
-                                </Button>
-                              </CollapsibleTrigger>
-                              <CollapsibleContent>
-                                <div className="mt-2 ml-6 space-y-2">
+                                </div>
+                                <div className="ml-6 space-y-2">
                                   {items.map((item, idx) => (
                                     <div 
                                       key={idx} 
-                                      className="flex items-center gap-2 p-2 bg-white/50 rounded-lg hover:bg-white/80 transition-colors"
+                                      className="flex items-center gap-2 p-2 bg-muted/5 rounded-lg hover:bg-muted/10 transition-colors group"
                                     >
                                       <div className="flex-1 grid grid-cols-[1fr,auto,1fr] items-center gap-4">
                                         <div className="flex flex-col space-y-1">
@@ -680,7 +667,7 @@ export function StepProcessor() {
                                         </div>
                                         <ChevronRight className="h-3 w-3 text-muted-foreground" />
                                         <div className="flex flex-col space-y-1">
-                                          <span className="text-xs text-muted-foreground">Placeholder</span>
+                                          <span className="text-xs text-muted-foreground">Replacement</span>
                                           <code className="p-1.5 bg-muted/50 rounded text-xs">
                                             {item.substitute.replace(/[\u200B-\u200D\uFEFF]/g, '')}
                                           </code>
@@ -697,9 +684,9 @@ export function StepProcessor() {
                                     </div>
                                   ))}
                                 </div>
-                              </CollapsibleContent>
-                            </Collapsible>
-                          ))}
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       </CollapsibleContent>
                     </Collapsible>
