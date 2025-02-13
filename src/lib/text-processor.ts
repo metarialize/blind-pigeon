@@ -16,6 +16,8 @@ export interface ValidationResult {
   suggestedFixes: { original: string; modified: string; }[];
 }
 
+import { getRandomSubstitute } from './random-data';
+
 const ZERO_WIDTH_SPACE = '\u200C';
 
 const BRACKET_STYLES: Record<SensitiveDataType, { open: string; close: string }> = {
@@ -72,12 +74,6 @@ const findSimilarPlaceholder = (text: string, original: string): string | null =
   return bestMatch;
 };
 
-const getRandomSubstitute = (type: SensitiveDataType, usedValues: Set<string>): string => {
-  const { open, close } = BRACKET_STYLES[type];
-  const placeholder = `${open}UID:${type.toUpperCase()}:${usedValues.size.toString().padStart(6, '0')}${close}`;
-  return `${ZERO_WIDTH_SPACE}${placeholder}${ZERO_WIDTH_SPACE}`;
-};
-
 export const generateSubstitute = (type: SensitiveDataType, value: string, usedSubstitutes: Map<string, string>): string => {
   if (usedSubstitutes.has(value)) {
     return usedSubstitutes.get(value)!;
@@ -92,8 +88,7 @@ export const generateSubstitute = (type: SensitiveDataType, value: string, usedS
 export const detectSensitiveData = (text: string): DetectedEntity[] => {
   const entities: DetectedEntity[] = [];
   const usedSubstitutes = new Map<string, string>();
-  let index = 0;
-
+  
   const nameRegex = /\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+\b/g;
   let match;
   while ((match = nameRegex.exec(text)) !== null) {
