@@ -178,6 +178,7 @@ export function StepProcessor() {
     ssn: false,
     dob: false,
     account: false,
+    custom: false
   });
   const { toast } = useToast();
 
