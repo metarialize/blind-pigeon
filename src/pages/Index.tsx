@@ -1,5 +1,7 @@
 
 import { StepProcessor } from "@/components/StepProcessor";
+import { Button } from "@/components/ui/button";
+import { ChevronRight } from "lucide-react";
 
 const Index = () => {
   return (
