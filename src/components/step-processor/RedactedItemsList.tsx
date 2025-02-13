@@ -39,6 +39,7 @@ export function RedactedItemsList({ entities, maskedText }: RedactedItemsListPro
   const [manualType, setManualType] = useState<SensitiveDataType | "custom">("name");
   const [editStates, setEditStates] = useState<Record<string, boolean>>({});
   const [editValues, setEditValues] = useState<Record<string, string>>({});
+  const [openCategory, setOpenCategory] = useState<string | null>(null);
   const { toast } = useToast();
 
   const handleEdit = (original: string) => {
@@ -55,6 +56,10 @@ export function RedactedItemsList({ entities, maskedText }: RedactedItemsListPro
       });
     }
     setEditStates(prev => ({ ...prev, [original]: false }));
+  };
+
+  const handleCategoryClick = (category: string) => {
+    setOpenCategory(openCategory === category ? null : category);
   };
 
   return (
@@ -130,100 +135,105 @@ export function RedactedItemsList({ entities, maskedText }: RedactedItemsListPro
           </Dialog>
 
           {/* Redacted Items List */}
-          {Object.entries(
-            entities.reduce((acc, entity) => {
-              if (!acc[entity.type]) {
-                acc[entity.type] = [];
-              }
-              acc[entity.type].push(entity);
-              return acc;
-            }, {} as Record<SensitiveDataType, DetectedEntity[]>)
-          ).map(([type, items]) => (
-            <Collapsible key={type}>
-              <CollapsibleTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  className={`w-full flex items-center gap-2 px-2 py-1.5 hover:bg-white/50 rounded-lg ${categoryColors[type as SensitiveDataType].text}`}
-                >
-                  <span>{categoryColors[type as SensitiveDataType].icon}</span>
-                  <span className="capitalize font-medium">{type} ({items.length})</span>
-                  <ChevronDown className="h-4 w-4 ml-auto" />
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className="mt-2 ml-6 space-y-2">
-                  {items.map((item, idx) => (
-                    <div 
-                      key={idx} 
-                      className="flex items-center gap-2 p-2 bg-white/50 rounded-lg hover:bg-white/80 transition-colors"
-                    >
-                      <div className="flex-1 grid grid-cols-[1fr,auto,1fr] items-center gap-4">
-                        <div className="flex flex-col space-y-1">
-                          <span className="text-xs text-muted-foreground">Original</span>
-                          <code className="p-1.5 bg-muted/50 rounded text-xs truncate" title={item.value}>
-                            {item.value}
-                          </code>
+          <div className="space-y-2">
+            {Object.entries(
+              entities.reduce((acc, entity) => {
+                if (!acc[entity.type]) {
+                  acc[entity.type] = [];
+                }
+                acc[entity.type].push(entity);
+                return acc;
+              }, {} as Record<SensitiveDataType, DetectedEntity[]>)
+            ).map(([type, items]) => (
+              <Collapsible key={type} open={openCategory === type}>
+                <CollapsibleTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    className={`w-full flex items-center gap-2 px-2 py-1.5 hover:bg-white/50 rounded-lg ${categoryColors[type as SensitiveDataType].text}`}
+                    onClick={() => handleCategoryClick(type)}
+                  >
+                    <span>{categoryColors[type as SensitiveDataType].icon}</span>
+                    <span className="capitalize font-medium">{type} ({items.length})</span>
+                    <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-200 ${openCategory === type ? 'rotate-180' : ''}`} />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="mt-2 ml-6 max-h-[300px] overflow-y-auto">
+                    <div className="space-y-2">
+                      {items.map((item, idx) => (
+                        <div 
+                          key={idx} 
+                          className="flex items-center gap-2 p-2 bg-white/50 rounded-lg hover:bg-white/80 transition-colors"
+                        >
+                          <div className="flex-1 grid grid-cols-[1fr,auto,1fr] items-center gap-4">
+                            <div className="flex flex-col space-y-1">
+                              <span className="text-xs text-muted-foreground">Original</span>
+                              <code className="p-1.5 bg-muted/50 rounded text-xs truncate" title={item.value}>
+                                {item.value}
+                              </code>
+                            </div>
+                            <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                            <div className="flex flex-col space-y-1">
+                              <span className="text-xs text-muted-foreground">Placeholder</span>
+                              {editStates[item.value] ? (
+                                <Input
+                                  value={editValues[item.value] || item.substitute}
+                                  onChange={(e) => setEditValues(prev => ({ ...prev, [item.value]: e.target.value }))}
+                                  className="text-xs"
+                                />
+                              ) : (
+                                <code className="p-1.5 bg-muted/50 rounded text-xs truncate">
+                                  {item.substitute}
+                                </code>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {editStates[item.value] ? (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setEditStates(prev => ({ ...prev, [item.value]: false }))}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  onClick={() => handleSave(item.value)}
+                                >
+                                  <Check className="h-4 w-4" />
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleEdit(item.value)}
+                                >
+                                  <Edit2 className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {}}
+                                  className="hover:bg-destructive/10 hover:text-destructive"
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
                         </div>
-                        <ChevronRight className="h-3 w-3 text-muted-foreground" />
-                        <div className="flex flex-col space-y-1">
-                          <span className="text-xs text-muted-foreground">Placeholder</span>
-                          {editStates[item.value] ? (
-                            <Input
-                              value={editValues[item.value] || item.substitute}
-                              onChange={(e) => setEditValues(prev => ({ ...prev, [item.value]: e.target.value }))}
-                              className="text-xs"
-                            />
-                          ) : (
-                            <code className="p-1.5 bg-muted/50 rounded text-xs">
-                              {item.substitute}
-                            </code>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {editStates[item.value] ? (
-                          <>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setEditStates(prev => ({ ...prev, [item.value]: false }))}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="default"
-                              size="sm"
-                              onClick={() => handleSave(item.value)}
-                            >
-                              <Check className="h-4 w-4" />
-                            </Button>
-                          </>
-                        ) : (
-                          <>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleEdit(item.value)}
-                            >
-                              <Edit2 className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {}}
-                              className="hover:bg-destructive/10 hover:text-destructive"
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </>
-                        )}
-                      </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-          ))}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            ))}
+          </div>
         </div>
       </CollapsibleContent>
     </Collapsible>
