@@ -1,7 +1,5 @@
 
 import { StepProcessor } from "@/components/StepProcessor";
-import { Button } from "@/components/ui/button";
-import { ChevronRight } from "lucide-react";
 
 const Index = () => {
   return (
@@ -17,13 +15,6 @@ const Index = () => {
           <p className="text-sm text-gray-500 mt-2 max-w-2xl mx-auto">
             Protect your sensitive information when using AI tools like ChatGPT, Claude, or XAI by automatically redacting and restoring private data—all processed locally for maximum privacy.
           </p>
-          <Button 
-            onClick={() => window.location.href = '#processor'} 
-            className="mt-8 bg-primary text-primary-foreground hover:bg-primary/90 animate-fade-in"
-          >
-            Get Started
-            <ChevronRight className="ml-2 h-4 w-4" />
-          </Button>
         </div>
         
         <div id="processor">
